@@ -65,7 +65,13 @@ async function serve(req, res) {
     body = JSON.parse(bytes.toString());
   const send = (value, status = 200) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(value));
+    res.end(
+      JSON.stringify(value, (key, value) =>
+        key.endsWith('_date') && typeof value === 'string'
+          ? value.slice(0, 10)
+          : value,
+      ),
+    );
   };
   if (url.pathname === '/health') {
     send({ ok: true });
@@ -150,7 +156,13 @@ async function serve(req, res) {
             if (['select', 'order', 'offset', 'limit'].includes(key)) continue;
             if (!/^\w+$/.test(key)) throw new Error('Invalid column');
             if (value.startsWith('eq.')) {
-              values.push(value.slice(3)==='true'?true:value.slice(3)==='false'?false:value.slice(3));
+              values.push(
+                value.slice(3) === 'true'
+                  ? true
+                  : value.slice(3) === 'false'
+                    ? false
+                    : value.slice(3),
+              );
               conditions.push(`${key}=$${values.length}`);
             }
           }

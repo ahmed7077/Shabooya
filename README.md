@@ -99,14 +99,11 @@ See [Brevo SMTP configuration](https://help.brevo.com/hc/en-us/articles/79249089
 
 ## GitHub and CI
 
-Create a GitHub repository and use `main` as its default branch. The current workspace has no initial commit or configured remote. After reviewing the files:
+The repository is [ahmed7077/Shabooya](https://github.com/ahmed7077/Shabooya), with `main` as the default branch. It already contains the implementation checkpoint. To make the next change:
 
 ```powershell
-git branch -M main
-git add .
-git commit -m "Build rollcall attendance PWA"
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-git push -u origin main
+git switch main
+git pull --ff-only
 git switch -c codex/my-next-change
 ```
 
@@ -137,6 +134,18 @@ Remove-Item Env:PLAYWRIGHT_CHANNEL
 The browser suite builds with a **test-only** localhost backend (`127.0.0.1:54329`) and starts Next on port 3100. The adapter executes the production migration in PostgreSQL (PGlite), including RLS and RPCs; Auth email delivery and stored image bytes are fixtures. It is never part of a production build's imports. Test changes are not real student data. After browser tests, run `npm run build` with your real `.env.local` before `npm start` or manual deployment; browser-test builds embed test configuration.
 
 Unit tests exercise exact/zero/100% targets, empty attendance, integer boundaries and 5,000 mathematical combinations. Integration tests use independent identities with `SET ROLE authenticated` and execute actual PostgreSQL constraints and policies. See `docs/SECURITY.md` for what is and is not verified live.
+
+### Optional development data
+
+Create and confirm a disposable account in a development Supabase project first. The seed script signs in as that student and uses the same protected database functions as the app; it requires no privileged key. It creates an example medical timetable and some historical marks. It is never run automatically or imported into the application. Do not point it at your production project.
+
+```powershell
+$env:DEMO_EMAIL = 'your-development-account@example.com'
+$env:DEMO_PASSWORD = Read-Host 'Development account password' -MaskInput
+node --env-file=.env.local scripts/seed-demo.mjs --confirm-development
+Remove-Item Env:DEMO_EMAIL
+Remove-Item Env:DEMO_PASSWORD
+```
 
 ## Deploy through Vercel
 

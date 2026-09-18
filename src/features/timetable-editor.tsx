@@ -413,11 +413,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
           )}
           <div className="entry-list">
             {draft.entries.map((e, i) => (
-              <details
-                className="entry-editor"
-                key={e.id}
-                open
-              >
+              <details className="entry-editor" key={e.id} open>
                 <summary>
                   <span className="entry-day">
                     {e.recurrence === 'once'

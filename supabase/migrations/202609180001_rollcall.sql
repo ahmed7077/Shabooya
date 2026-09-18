@@ -148,5 +148,5 @@ revoke all on function public.activate_timetable(jsonb),public.mark_attendance(u
 grant execute on function public.activate_timetable(jsonb),public.mark_attendance(uuid,text,bigint,uuid),public.change_session(uuid,text,text,date,time,time),public.add_holiday(date,text),public.delete_personal_data(text) to authenticated;
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('timetable-images','timetable-images',false,5242880,array['image/jpeg','image/png']) on conflict(id) do nothing;
 create policy own_image_read on storage.objects for select to authenticated using(bucket_id='timetable-images' and split_part(name,'/',1)=auth.uid()::text);
-create policy own_image_insert on storage.objects for insert to authenticated with check(bucket_id='timetable-images' and split_part(name,'/',1)=auth.uid()::text);
+create policy own_image_insert on storage.objects for insert to authenticated with check(bucket_id='timetable-images' and split_part(name,'/',1)=auth.uid()::text and array_length(string_to_array(name,'/'),1)=2);
 create policy own_image_delete on storage.objects for delete to authenticated using(bucket_id='timetable-images' and split_part(name,'/',1)=auth.uid()::text);

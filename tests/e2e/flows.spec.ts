@@ -27,6 +27,7 @@ async function onboard(page: Page) {
   await page.getByLabel('University / college').fill('Independent University');
   await page.getByLabel('Course', { exact: true }).fill('Medicine');
   await page.getByLabel('Semester / year').fill('Year 2');
+  await page.getByLabel('Timezone', { exact: true }).fill('UTC');
   await page.getByRole('button', { name: 'Continue to my timetable' }).click();
   await expect(
     page.getByRole('heading', { name: 'A little more on track.' }),
@@ -46,14 +47,21 @@ async function timetable(page: Page) {
   await page.getByLabel('Subject 1', { exact: true }).fill('Anatomy');
   await page
     .getByLabel('Day', { exact: true })
-    .selectOption(String(new Date().getDay()));
+    .selectOption(String(new Date().getUTCDay()));
   await page.getByLabel('Start time', { exact: true }).fill('00:00');
   await page.getByLabel('End time', { exact: true }).fill('00:01');
-  await page.addStyleTag({content:'.panel,.stack,.field,.editor-grid>*,.form-grid>*,.content-grid>*{min-width:0}.form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}html{scroll-padding-block:24px 110px}input,button{scroll-margin-block:24px 110px}'});
-  console.log('layout',await page.evaluate(()=>({width:innerWidth,visual:visualViewport?.width,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('*')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>[e.tagName,e.className,e.getBoundingClientRect().width]).slice(0,20)})));
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page
     .getByLabel('I reviewed all dates, times, subjects and groups.')
     .check();
+  await page.screenshot({
+    path: `test-results/editor-${page.viewportSize()!.width}.png`,
+    fullPage: true,
+  });
   await page
     .getByRole('button', { name: 'Confirm timetable', exact: true })
     .click();
@@ -73,6 +81,10 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
     .getByRole('button', { name: 'Mark Anatomy present', exact: true })
     .click();
   await expect(page.locator('.hero-number')).toContainText('100.0%');
+  await page.screenshot({
+    path: `test-results/dashboard-light-${page.viewportSize()!.width}.png`,
+    fullPage: true,
+  });
   await page
     .getByRole('button', { name: 'Mark Anatomy absent', exact: true })
     .click();
@@ -93,6 +105,10 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await expect(
     page.getByRole('heading', { name: 'See the bigger picture.' }),
   ).toBeVisible();
+  await page.screenshot({
+    path: `test-results/calendar-${page.viewportSize()!.width}.png`,
+    fullPage: true,
+  });
   await nav(page, 'Timetable');
   await expect(
     page.getByRole('heading', { name: 'Your week, laid out.' }),
@@ -101,7 +117,6 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await page.getByLabel('Appearance').selectOption('dark');
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).not.toHaveJSProperty('scrollWidth', 0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -174,7 +189,13 @@ test('private image upload, holiday, cancellation correction, timetable replacem
   await expect(
     page.getByText('Image uploaded privately. Ready to extract.'),
   ).toBeVisible();
-  if (!(await page.locator('.entry-editor').first().getAttribute('open') !== null)) await page.locator('.entry-editor summary').first().click();
+  if (
+    !(
+      (await page.locator('.entry-editor').first().getAttribute('open')) !==
+      null
+    )
+  )
+    await page.locator('.entry-editor summary').first().click();
   await page.getByLabel('Subject 1', { exact: true }).fill('Physiology');
   await page
     .getByLabel('I reviewed all dates, times, subjects and groups.')
@@ -220,4 +241,74 @@ test('responsive first-use layout and password reset request', async ({
   await page.getByLabel('Email address').fill('student@example.com');
   await page.getByRole('button', { name: 'Send reset link' }).click();
   await expect(page.getByRole('status')).toContainText('If an account exists');
+});
+
+test('cross-device conflicts keep both marks until the student chooses', async ({
+  page,
+  context,
+  browser,
+}) => {
+  await onboard(page);
+  await timetable(page);
+  const second = await browser.newContext({
+    baseURL: 'http://127.0.0.1:3100',
+    viewport: { width: 1440, height: 1000 },
+  });
+  try {
+    const other = await second.newPage();
+    await other.goto('/');
+    await other.getByLabel('Email address').fill('student@example.com');
+    await other
+      .getByLabel('Password', { exact: true })
+      .fill('test-password-123');
+    await other.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(
+      other.getByRole('button', { name: 'Mark Anatomy absent', exact: true }),
+    ).toBeVisible();
+    await context.setOffline(true);
+    await page
+      .getByRole('button', { name: 'Mark Anatomy present', exact: true })
+      .click();
+    await other
+      .getByRole('button', { name: 'Mark Anatomy absent', exact: true })
+      .click();
+    await expect(other.locator('.connection')).toContainText('All up to date');
+    await context.setOffline(false);
+    await expect(
+      page.getByText('A mark changed on another device.', { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Keep this device', exact: true })
+      .click();
+    await expect(page.locator('.connection')).toContainText('All up to date');
+    await other.reload();
+    await expect(other.locator('.hero-number')).toContainText('100.0%');
+  } finally {
+    await second.close();
+  }
+});
+
+test('all primary screens fit small phones through desktop', async ({
+  page,
+}) => {
+  await onboard(page);
+  await timetable(page);
+  for (const width of [320, 375, 390, 430, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const name of [
+      'Home',
+      'Timetable',
+      'Attendance',
+      'Calendar',
+      'Profile',
+    ]) {
+      await nav(page, name);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        `${name} at ${width}px`,
+      ).toBe(true);
+    }
+  }
 });

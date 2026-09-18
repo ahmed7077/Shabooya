@@ -22,7 +22,7 @@ export function SettingsScreen({
   editTimetable: () => void;
   install: () => void;
 }) {
-    const { data, user, refresh, signOut, pending, online } = useApp();
+  const { data, user, refresh, signOut, pending, online } = useApp();
   const [profile, setProfile] = useState(false),
     [danger, setDanger] = useState(''),
     [error, setError] = useState(''),

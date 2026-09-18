@@ -156,8 +156,16 @@ describe('real PostgreSQL RLS and constraints', () => {
   });
   it('preserves marks when cancelling and restoring but rejects marking cancelled classes', async () => {
     await asUser(db, USER_A, "select change_session($1,'cancel')", [pastId]);
-    const cancelled = await asUser<{mark_attendance:{conflict:boolean;cancelled:boolean}}>(db, USER_A, "select mark_attendance($1,'absent',1,$2)", [pastId,crypto.randomUUID()]);
-    expect(cancelled.rows[0].mark_attendance).toMatchObject({conflict:true,cancelled:true});
+    const cancelled = await asUser<{
+      mark_attendance: { conflict: boolean; cancelled: boolean };
+    }>(db, USER_A, "select mark_attendance($1,'absent',1,$2)", [
+      pastId,
+      crypto.randomUUID(),
+    ]);
+    expect(cancelled.rows[0].mark_attendance).toMatchObject({
+      conflict: true,
+      cancelled: true,
+    });
     await asUser(db, USER_A, "select change_session($1,'restore')", [pastId]);
     expect(
       (

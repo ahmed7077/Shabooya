@@ -1,5 +1,13 @@
 import { X, ArrowUpRight, CheckCheck } from 'lucide-react';
-import { useEffect, useRef, useId, cloneElement, isValidElement, type ReactElement } from 'react';
+import {
+  useEffect,
+  useRef,
+  useId,
+  cloneElement,
+  isValidElement,
+  Children,
+  type ReactElement,
+} from 'react';
 export function Brand() {
   return (
     <span className="brand">
@@ -23,7 +31,16 @@ export function Field({
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      {isValidElement(children) ? cloneElement(children as ReactElement<Record<string,unknown>>, {id, 'aria-describedby': hint ? `${id}-hint` : undefined}) : children}
+      {Children.map(children, (child) =>
+        isValidElement(child) &&
+        typeof child.type === 'string' &&
+        ['input', 'select', 'textarea'].includes(child.type)
+          ? cloneElement(child as ReactElement<Record<string, unknown>>, {
+              id,
+              'aria-describedby': hint ? `${id}-hint` : undefined,
+            })
+          : child,
+      )}
       {hint && <small id={`${id}-hint`}>{hint}</small>}
     </div>
   );

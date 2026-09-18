@@ -15,7 +15,7 @@ export function generateSessions(
   ) {
     const date = new Date(cursor).toISOString().slice(0, 10),
       day = new Date(cursor).getUTCDay();
-    const occupied: {start:string;end:string}[] = [];
+    const occupied: { start: string; end: string }[] = [];
     for (const e of t.entries) {
       if (
         !e.is_active ||
@@ -34,7 +34,7 @@ export function generateSessions(
         throw new Error(
           `Classes overlap on ${date}. Check the times and remove duplicates.`,
         );
-      occupied.push({start:starts_at,end:ends_at});
+      occupied.push({ start: starts_at, end: ends_at });
       result.push({
         id: `${e.id}:${date}`,
         user_id: userId,

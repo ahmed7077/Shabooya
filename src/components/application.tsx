@@ -47,6 +47,11 @@ function Content() {
     [showInstall, setShowInstall] = useState(false),
     [, tick] = useState(0);
   useEffect(() => {
+    setTab('Home');
+    setEditor(false);
+    setInstall(false);
+  }, [user?.id]);
+  useEffect(() => {
     const timer = setInterval(() => tick((n) => n + 1), 60000);
     setShowInstall(
       !localStorage.getItem('rollcall-install-dismissed') &&
@@ -179,7 +184,11 @@ function Content() {
           <ErrorText message={error} />
           {conflicts.map((c) => (
             <div className="notice" key={c.mark.id}>
-              <strong>{c.cancelled ? 'This class was cancelled on another device.' : 'A mark changed on another device.'}</strong>
+              <strong>
+                {c.cancelled
+                  ? 'This class was cancelled on another device.'
+                  : 'A mark changed on another device.'}
+              </strong>
               <p>
                 {
                   data.sessions.find((s) => s.id === c.mark.session_id)

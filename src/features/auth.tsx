@@ -11,7 +11,7 @@ import { Brand, Field, ErrorText } from '@/components/ui';
 import { useApp } from '@/components/app-provider';
 import { profileSchema } from '@/lib/validation';
 export function AuthScreen() {
-  const {error:sessionError} = useApp();
+  const { error: sessionError } = useApp();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin'),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),

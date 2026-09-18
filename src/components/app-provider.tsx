@@ -48,7 +48,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [conflicts, setConflicts] = useState<Conflict[]>([]),
     [recovery, setRecovery] = useState(false);
   const userRef = useRef<User | null>(null),
-    busy = useRef(false);
+    activeSyncs = useRef(0);
   const apply = useCallback(
     (snapshot: Snapshot | null, queue: PendingMark[]) => {
       if (snapshot)
@@ -64,61 +64,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
-  const sync = useCallback(async (reload = true) => {
-    const current = userRef.current;
-    if (!current || !navigator.onLine || busy.current) return;
-    busy.current = true;
-    setSyncing(true);
-    try {
-      await navigator.locks.request('rollcall-data', async () => {
-        const local = await readLocal(current.id);
-        const unresolved: Conflict[] = [];
-        for (const mark of [...local.queue]) {
+  const sync = useCallback(
+    async (reload = true) => {
+      const current = userRef.current;
+      if (!current || !navigator.onLine) return;
+      activeSyncs.current++;
+      setSyncing(true);
+      try {
+        await navigator.locks.request('rollcall-data', async () => {
           if (userRef.current?.id !== current.id) return;
-          const result = await rpc('mark_attendance', {
-            session_id_input: mark.session_id,
-            status_input: mark.status,
-            expected_version: mark.expected_version,
-            mutation_id_input: mark.id,
-          });
-          if (result.conflict) {
-            unresolved.push({
-              mark,
-              remoteVersion: result.version,
-              remoteStatus: result.status,
-              cancelled: result.cancelled,
+          const local = await readLocal(current.id);
+          const unresolved: Conflict[] = [];
+          for (const mark of [...local.queue]) {
+            if (userRef.current?.id !== current.id) return;
+            const result = await rpc('mark_attendance', {
+              session_id_input: mark.session_id,
+              status_input: mark.status,
+              expected_version: mark.expected_version,
+              mutation_id_input: mark.id,
             });
-            continue;
+            if (result.conflict) {
+              unresolved.push({
+                mark,
+                remoteVersion: result.version,
+                remoteStatus: result.status,
+                cancelled: result.cancelled,
+              });
+              continue;
+            }
+            local.queue = local.queue.filter((m) => m.id !== mark.id);
+            if (local.snapshot)
+              local.snapshot.sessions = local.snapshot.sessions.map((s) =>
+                s.id === mark.session_id
+                  ? {
+                      ...s,
+                      attendance_version: result.version,
+                      attendance_status: mark.status,
+                    }
+                  : s,
+              );
+            await writeLocal(current.id, local);
           }
-          local.queue = local.queue.filter((m) => m.id !== mark.id);
-          if (local.snapshot)
-            local.snapshot.sessions = local.snapshot.sessions.map((s) =>
-              s.id === mark.session_id
-                ? {
-                    ...s,
-                    attendance_version: result.version,
-                    attendance_status: mark.status,
-                  }
-                : s,
-            );
-          await writeLocal(current.id, local);
-        }
-        const snapshot = reload || !local.snapshot || unresolved.length ? await loadSnapshot(current.id) : local.snapshot;
-        if (userRef.current?.id !== current.id) return;
-        await writeLocal(current.id, { snapshot, queue: local.queue });
-        apply(snapshot, local.queue);
-        setConflicts(unresolved);
-        setError('');
-      });
-    } catch {
-      setError(
-        'Sync paused. Saved changes remain on this device. Check your connection or sign-in, then retry.',
-      );
-    } finally {
-      busy.current = false;
-      setSyncing(false);
-    }
-  }, [apply]);
+          const snapshot =
+            reload || !local.snapshot || unresolved.length
+              ? await loadSnapshot(current.id)
+              : local.snapshot;
+          if (userRef.current?.id !== current.id) return;
+          await writeLocal(current.id, { snapshot, queue: local.queue });
+          apply(snapshot, local.queue);
+          setConflicts(unresolved);
+          setError('');
+        });
+      } catch {
+        setError(
+          'Sync paused. Saved changes remain on this device. Check your connection or sign-in, then retry.',
+        );
+      } finally {
+        activeSyncs.current--;
+        setSyncing(activeSyncs.current > 0);
+      }
+    },
+    [apply],
+  );
   const refresh = useCallback(async () => {
     await sync();
   }, [sync]);
@@ -135,7 +142,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!next) {
         if (previous) {
           const local = await readLocal(previous.id);
-          if (local.queue.length) setError('Your session ended. Sign in to the same account to sync attendance saved on this device.');
+          if (local.queue.length)
+            setError(
+              'Your session ended. Sign in to the same account to sync attendance saved on this device.',
+            );
           else await clearLocal(previous.id);
         }
         sessionStorage.clear();
@@ -148,6 +158,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (previous?.id === next.id) return;
+      setData(null);
+      setConflicts([]);
+      setPending(0);
       try {
         const local = await readLocal(next.id);
         if (alive && userRef.current?.id === next.id)
@@ -249,7 +262,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await sync();
   };
   const signOut = async () => {
-    if (pending)
+    const local = user ? await readLocal(user.id) : null;
+    if (pending || local?.queue.length)
       throw new Error(
         'Sync your pending attendance changes before signing out.',
       );
