@@ -269,17 +269,38 @@ test('cross-device conflicts keep both marks until the student chooses', async (
     await page
       .getByRole('button', { name: 'Mark Anatomy present', exact: true })
       .click();
+    await expect(
+      page.getByRole('button', { name: 'Mark Anatomy present', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    const remoteMark = other.waitForResponse(
+      (response) =>
+        response.url().endsWith('/rpc/mark_attendance') &&
+        response.request().method() === 'POST',
+    );
     await other
       .getByRole('button', { name: 'Mark Anatomy absent', exact: true })
       .click();
+    expect(await (await remoteMark).json()).toMatchObject({
+      version: 1,
+      status: 'absent',
+    });
     await expect(other.locator('.connection')).toContainText('All up to date');
     await context.setOffline(false);
     await expect(
       page.getByText('A mark changed on another device.', { exact: true }),
     ).toBeVisible();
+    const resolvedMark = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/rpc/mark_attendance') &&
+        response.request().method() === 'POST',
+    );
     await page
       .getByRole('button', { name: 'Keep this device', exact: true })
       .click();
+    expect(await (await resolvedMark).json()).toMatchObject({
+      version: 2,
+      status: 'present',
+    });
     await expect(page.locator('.connection')).toContainText('All up to date');
     await other.reload();
     await expect(other.locator('.hero-number')).toContainText('100.0%');

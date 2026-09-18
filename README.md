@@ -4,6 +4,8 @@ A mobile-first personal attendance PWA. Each student supplies their own timetabl
 
 **The application is implemented, but a live deployment requires your Supabase project, email sender and Vercel account.** Without public Supabase configuration, the app shows an honest setup state. It never substitutes sample data for your backend.
 
+See the [feature checklist and student testing guide](docs/USER-TESTING.md) for completed functionality, remaining release work, a local disposable sandbox and a step-by-step acceptance test.
+
 The earlier Expo project is preserved under `legacy/expo/`. It is not built, deployed or used by this application. Use a fresh Supabase project for the new migration; do not apply the archived migration.
 
 ## What students can do
