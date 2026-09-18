@@ -1,0 +1,1 @@
+-- Optional local-only seed data. Do not run in production projects with real users.

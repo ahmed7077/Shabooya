@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "MedAttend",
+    "slug": "med-attend",
+    "scheme": "medattend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F8FAFC"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.medattend.student",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MedAttend uses the camera so you can import your personal class timetable.",
+        "NSPhotoLibraryUsageDescription": "MedAttend uses your photo library so you can upload your personal timetable image."
+      }
+    },
+    "android": {
+      "package": "com.medattend.student",
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "POST_NOTIFICATIONS"]
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-notifications", "expo-image-picker"],
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-eas-project-id"
+      }
+    }
+  }
+}

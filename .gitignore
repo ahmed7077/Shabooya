@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.next/
+.env.local
+.env.*.local
+test-results/
+playwright-report/
+*.tsbuildinfo
+public/sw.js
