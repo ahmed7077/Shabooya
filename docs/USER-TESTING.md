@@ -68,7 +68,7 @@ Terminal 2:
 $env:NEXT_PUBLIC_SUPABASE_URL='http://127.0.0.1:54329'
 $env:NEXT_PUBLIC_SUPABASE_ANON_KEY='test-publishable-key'
 npm run build
-if ($LASTEXITCODE -eq 0) { npm run start -- --hostname 127.0.0.1 --port 3100 }
+if ($LASTEXITCODE -eq 0) { npx next start --hostname 127.0.0.1 --port 3100 }
 ```
 
 Stop both with Ctrl+C. Before building for a real Supabase project, close the sandbox terminal or remove its two environment variables, configure `.env.local`, then rebuild. Do not run the automated browser suite while manually testing: its reset step deletes the sandbox records.
