@@ -1,13 +1,13 @@
 # Validation record
 
-Validated on Windows with Node.js 22.17.1 on 18 September 2026.
+Validated on Windows with Node.js 22.17.1; extraction updates checked on 19 September 2026.
 
 | Check                  | Result                                                                |
 | ---------------------- | --------------------------------------------------------------------- |
 | `npm run typecheck`    | Passed, strict TypeScript                                             |
 | `npm run lint`         | Passed, no warnings                                                   |
 | `npm run format:check` | Passed                                                                |
-| `npm test`             | 53 tests passed across 3 files                                        |
+| `npm test`             | 65 tests passed across 5 files                                        |
 | `npm run build`        | Passed, production Next.js build and generated service worker         |
 | `npm run test:e2e`     | 12 tests passed, mobile and desktop Chromium                          |
 | `npm audit --omit=dev` | No reported production dependency vulnerabilities at the time checked |
@@ -21,6 +21,8 @@ Offline tests load the actual production service worker, disconnect the browser,
 The screenshots in `docs/images/` show a disposable test account. They are documentation only; production never loads these records. The dashboard, calendar, editor and dark settings screenshots were visually inspected for spacing, overflow, contrast, control layout and navigation.
 
 ## Database coverage
+
+The extraction update adds pixel-grid/blank-cell tests, merged-period and batch parsing, date precedence, local Friday time headers, unresolved count allocations and ordinal weekdays. PostgreSQL tests verify that ordinal occurrences and source/review text survive activation, and invalid ordinals are rejected. Both supplied timetable photographs were exercised in the real local upload UI: the engineering image produced eight candidate entries (seven after batch selection); the medical image produced 38 candidates before batch filtering and explicit exclusion of undated alternatives. The medical schedule was activated successfully, including the correct odd-Saturday classes. The photographs are not committed to the repository. See `TIMETABLE-EXTRACTION.md` for the exact scope and remaining recognition limits.
 
 Tests run the actual production migration in PostgreSQL (PGlite), including RLS, composite ownership constraints, security-invoker views and RPCs. Independent identities verify cross-user read/write isolation and private storage metadata policies. Tests also check future/cancelled attendance, idempotent writes, conflicts, rescheduling, holidays, replacement rollback on overlap, historical preservation and actual Auth-row deletion after image cleanup.
 

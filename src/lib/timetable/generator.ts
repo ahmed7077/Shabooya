@@ -19,7 +19,13 @@ export function generateSessions(
     for (const e of t.entries) {
       if (
         !e.is_active ||
-        (e.recurrence === 'once' ? e.on_date !== date : e.day_of_week !== day)
+        (e.recurrence === 'once'
+          ? e.on_date !== date
+          : e.day_of_week !== day ||
+            (e.month_weeks.length > 0 &&
+              !e.month_weeks.includes(
+                Math.ceil(new Date(cursor).getUTCDate() / 7),
+              )))
       )
         continue;
       const starts_at = fromZonedTime(

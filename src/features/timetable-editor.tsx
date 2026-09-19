@@ -68,7 +68,23 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
     [preview, setPreview] = useState(''),
     [progress, setProgress] = useState(''),
     [rawText, setRawText] = useState(''),
-    [warning, setWarning] = useState('');
+    [warning, setWarning] = useState(''),
+    [dateRanges, setDateRanges] = useState<[string, string][]>([]),
+    [selectedBatch, setSelectedBatch] = useState(() => {
+      const active = [
+        ...new Set(
+          draft.entries
+            .filter((e) => e.source_text && e.batch && e.is_active)
+            .map((e) => e.batch),
+        ),
+      ];
+      return active.length === 1 ? active[0] : '';
+    });
+  const extractedBatches = [
+    ...new Set(
+      draft.entries.filter((e) => e.source_text && e.batch).map((e) => e.batch),
+    ),
+  ].sort();
   useEffect(() => {
     sessionStorage.setItem(`rollcall-draft:${user!.id}`, JSON.stringify(draft));
   }, [draft, user]);
@@ -112,13 +128,15 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
         ? e.message
         : 'Add valid academic dates and at least one complete class. Check dates, names and times.';
   }
+  if (extractedBatches.length && !selectedBatch)
+    validation = 'Choose your batch from the image before confirming.';
   async function upload(original: File) {
     setBusy(true);
     setError('');
     setProgress('Preparing image…');
     try {
       const image = await compressImage(original);
-      setFile(image);
+      setFile(original);
       const path = `${user!.id}/${crypto.randomUUID()}.jpg`;
       const { data: auth } = await db().auth.getSession();
       if (!auth.session)
@@ -175,6 +193,8 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
         setProgress(`Reading image · ${n}%`),
       );
       setRawText(result.rawText);
+      setDateRanges(result.dateRanges || []);
+      setSelectedBatch('');
       if (!result.entries.length) {
         setWarning(
           "We couldn't reliably read this timetable. Try Again or Create Timetable Manually below.",
@@ -182,7 +202,13 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
       } else {
         setDraft((d) => ({
           ...d,
-          entries: [...d.entries, ...result.entries],
+          entries: [
+            ...d.entries.filter((e) => !e.source_text),
+            ...result.entries.map((e) => ({
+              ...e,
+              is_active: e.batch ? false : e.is_active,
+            })),
+          ],
           academic_start_date:
             d.academic_start_date || result.academicStart || '',
           academic_end_date: d.academic_end_date || result.academicEnd || '',
@@ -391,9 +417,69 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                 <pre className="ocr-text">{rawText}</pre>
               </details>
             )}
+            {dateRanges.length > 1 && (
+              <Field label="Academic period printed in the image">
+                <select
+                  value={dateRanges.findIndex(
+                    (r) =>
+                      r[0] === draft.academic_start_date &&
+                      r[1] === draft.academic_end_date,
+                  )}
+                  onChange={(event) => {
+                    const range = dateRanges[Number(event.target.value)];
+                    if (range) {
+                      setReviewed(false);
+                      setDraft((d) => ({
+                        ...d,
+                        academic_start_date: range[0],
+                        academic_end_date: range[1],
+                      }));
+                    }
+                  }}
+                >
+                  <option value={-1}>Choose the applicable period</option>
+                  {dateRanges.map((r, i) => (
+                    <option key={r.join()} value={i}>
+                      {r[0]} to {r[1]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {extractedBatches.length > 0 && (
+              <Field label="Your batch in this timetable">
+                <select
+                  value={selectedBatch}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedBatch(value);
+                    setReviewed(false);
+                    setDraft((d) => ({
+                      ...d,
+                      entries: d.entries.map((e) =>
+                        e.source_text && e.batch
+                          ? {
+                              ...e,
+                              is_active: e.batch === value && !e.review_reason,
+                            }
+                          : e,
+                      ),
+                    }));
+                  }}
+                >
+                  <option value="">Choose your batch</option>
+                  {extractedBatches.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <p className="fine-print">
-              OCR runs in your browser. It can miss grid layouts. Always review
-              the result.
+              Reads table cells, merged periods and weekday patterns on your
+              device. Check the preview before confirming. Missing dates or
+              batch membership cannot be inferred from the image.
             </p>
           </section>
         </div>
@@ -413,7 +499,11 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
           )}
           <div className="entry-list">
             {draft.entries.map((e, i) => (
-              <details className="entry-editor" key={e.id} open>
+              <details
+                className="entry-editor"
+                key={e.id}
+                open={!e.source_text || e.needs_review}
+              >
                 <summary>
                   <span className="entry-day">
                     {e.recurrence === 'once'
@@ -430,6 +520,28 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                   {e.needs_review && <span className="review-tag">Review</span>}
                 </summary>
                 <div className="entry-fields">
+                  {e.source_text && (
+                    <details>
+                      <summary>Text from this timetable cell</summary>
+                      <pre className="ocr-text">{e.source_text}</pre>
+                    </details>
+                  )}
+                  {e.review_reason && (
+                    <div className="notice">
+                      <p>{e.review_reason}</p>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          patchEntry(e.id, {
+                            review_reason: '',
+                            needs_review: false,
+                          })
+                        }
+                      >
+                        I have checked and resolved this row
+                      </button>
+                    </div>
+                  )}
                   <Field label={`Subject ${i + 1}`}>
                     <input
                       value={e.subject_name}
@@ -486,6 +598,24 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                       </Field>
                     )}
                   </div>
+                  {e.recurrence === 'weekly' && (
+                    <Field label="Weeks of the month">
+                      <select
+                        value={(e.month_weeks || []).join(',')}
+                        onChange={(event) =>
+                          patchEntry(e.id, {
+                            month_weeks: event.target.value
+                              ? event.target.value.split(',').map(Number)
+                              : [],
+                          })
+                        }
+                      >
+                        <option value="">Every occurrence</option>
+                        <option value="1,3,5">1st, 3rd and 5th</option>
+                        <option value="2,4">2nd and 4th</option>
+                      </select>
+                    </Field>
+                  )}
                   <div className="form-grid">
                     <Field label="Start time">
                       <input

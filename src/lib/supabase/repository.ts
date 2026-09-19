@@ -40,6 +40,7 @@ export async function loadSnapshot(userId: string): Promise<Snapshot> {
         start_time: e.start_time.slice(0, 5),
         end_time: e.end_time.slice(0, 5),
         on_date: e.on_date || '',
+        needs_review: !!e.review_reason,
       })),
     };
   }

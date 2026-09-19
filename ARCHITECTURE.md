@@ -20,7 +20,7 @@ Every table uses RLS. The attendance view uses `security_invoker=true`. Read pol
 
 ## Extraction and image security
 
-`TimetableExtractor` is provider-independent. The bundled provider lazy-loads Tesseract.js in the browser. A conservative text parser extracts only explicit day/time/subject rows, flags every inferred/default field for review and exposes raw text. It does not guess grid alignment. No extraction result activates a timetable without confirmation.
+`TimetableExtractor` is provider-independent. The bundled provider lazy-loads Tesseract.js in the browser. A pixel-based detector corrects modest camera roll, finds ruled cells and merged regions, and rejects empty-cell border fragments. Each cell is read at higher resolution; small time labels receive additional grayscale passes. The spatial parser associates weekday rows, shared/local time headers, merged periods, printed date ranges, batch alternatives and ordinal weekday patterns. Explicit text rows remain a fallback. Raw cell text accompanies editable entries; unresolved date allocations are excluded instead of invented. No extraction result activates a timetable without confirmation. See `docs/TIMETABLE-EXTRACTION.md` for supported layouts and limits.
 
 Uploaded images are decoded/resized to a 2400-pixel long edge and JPEG-encoded before private storage. Browser MIME/size checks and bucket restrictions layer validation. Objects use `<auth.uid()>/<random UUID>.jpg` paths. Preview URLs expire; no public bucket URLs are generated. The service worker excludes object/API traffic.
 

@@ -44,6 +44,9 @@ export interface Entry {
   on_date: string;
   is_active: boolean;
   needs_review?: boolean;
+  month_weeks?: number[];
+  source_text?: string;
+  review_reason?: string;
 }
 export interface Timetable {
   id: string;

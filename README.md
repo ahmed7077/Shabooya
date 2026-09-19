@@ -70,7 +70,7 @@ npm start
 ## Supabase setup — exact steps
 
 1. Create a **Free** Supabase project. Choose a nearby region and save the database password privately. Wait until provisioning completes.
-2. Open **SQL Editor → New query**. Paste the entire `supabase/migrations/202609180001_rollcall.sql` and run it once. It creates tables, constraints, the attendance view, RPCs, RLS and the private `timetable-images` bucket. This is a fresh-project migration, not an upgrade for the archived Expo schema.
+2. Open **SQL Editor → New query**. Run the SQL files in `supabase/migrations/` in filename order, once each. Start with `202609180001_rollcall.sql`, then `202609180002_ordinal_weekdays.sql`. The first creates tables, constraints, the attendance view, RPCs, RLS and the private `timetable-images` bucket; the second adds ordinal weekday recurrence. If you already applied the first migration, apply only the second. These are not upgrades for the archived Expo schema.
 3. In **Storage**, verify `timetable-images` is **private**, allows JPEG/PNG, and has a 5 MB stored-file limit. The browser accepts source images up to 20 MB and compresses them before uploading.
 4. In **Authentication → Sign In / Providers → Email**, enable email/password authentication, keep email confirmation enabled, and set the minimum password length to at least 10.
 5. In **Authentication → URL Configuration**, set Site URL to the eventual HTTPS production URL. While developing, use `http://localhost:3000`. Add exact authorized redirect URLs for localhost and each trusted preview/production origin. Do not use unrestricted wildcard domains. Confirmation and recovery return to the application root.
@@ -190,7 +190,7 @@ No analytics, advertising, faculty access or behavioral tracking. The browser on
 
 ## Limitations and troubleshooting
 
-- OCR is a convenience, not an AI grid interpreter. It recognizes explicit `Monday 09:00 - 10:00 Subject` rows. Ambiguous grids stay in recognized text for manual entry. All extracted fields require review. First OCR use downloads a worker/language model; failure leaves manual entry usable.
+- Browser OCR reads ruled table cells, merged periods, 12/24-hour headers, batch alternatives, printed date ranges and alternating Saturday rows. It also accepts explicit `Monday 09:00 - 10:00 Subject` text rows. Free OCR cannot guarantee perfect recognition on every photograph; unsupported layouts and unclear fields remain editable. Session totals such as `PA L-11 / PH L-2` do not specify which dates use each subject: those alternatives are retained but excluded until their dated allocation is supplied. Missing academic dates and the student's batch cannot be inferred. First use downloads a worker/language model; failure leaves manual entry usable. See [extraction behavior](docs/TIMETABLE-EXTRACTION.md).
 - A timetable spans at most 370 days, with up to 100 entries. Overnight classes are not supported. Exact duplicate/overlapping classes are rejected; model separate batches using the student's actual applicable classes.
 - Replacing/editing a recurring timetable regenerates future sessions. Started and past sessions remain intact. Individual future reschedules/cancellations must be reapplied; saved holidays carry forward. This is disclosed before confirmation.
 - Historical labels are immutable snapshots. Subject display aliases and targets use normalized subject names; give distinct subjects distinct names/codes. Changing a profile timezone does not reinterpret an existing timetable's timestamps.

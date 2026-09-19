@@ -7,7 +7,8 @@ Status: the application is implemented. A hosted release still requires Supabase
 - [x] Email/password signup, sign-in, sign-out, recovery/reset screens, persistent authentication and session refresh.
 - [x] Personal profile: name, email, institution, course, semester/year, optional student ID and timezone.
 - [x] Private JPG/JPEG/PNG timetable upload, supported device file/camera picker, compression, progress, preview, replacement, removal and retry.
-- [x] Provider-independent, free browser OCR with recognized text, uncertain rows, mandatory review and manual fallback.
+- [x] Provider-independent, free browser OCR with table geometry, merged periods, batch selection, academic date choices, source text, uncertain rows and manual fallback.
+- [x] Ordinal weekday recurrence, including 1st/3rd/5th and 2nd/4th Saturdays, in both local and database session generation.
 - [x] Manual timetable editor: add, edit, duplicate, delete/deactivate entries; subject/code, type, batch/group, day, times, weekly or one-time recurrence.
 - [x] Academic start/end dates, validation, overlap checks and explicit confirmation before activation.
 - [x] Timezone-aware dated session generation within the academic period; chronological display; breaks/lunch excluded.
@@ -29,7 +30,7 @@ Status: the application is implemented. A hosted release still requires Supabase
 
 ## Still required before inviting students
 
-- [ ] Create a fresh Supabase project and apply `supabase/migrations/202609180001_rollcall.sql`.
+- [ ] Create a fresh Supabase project and apply both files in `supabase/migrations/` in filename order. Existing Next.js projects need the new `202609180002_ordinal_weekdays.sql` migration.
 - [ ] Configure the public project URL/key locally and in Vercel.
 - [ ] Configure an approved SMTP sender and exact signup/recovery redirect URLs.
 - [ ] Verify real confirmation email, password recovery, session refresh and hosted private image storage.
@@ -41,7 +42,7 @@ Status: the application is implemented. A hosted release still requires Supabase
 
 ## Known limits
 
-- Complex grid photos are not reliably parsed automatically. The reviewed manual editor is the dependable fallback; OCR never activates a schedule by itself.
+- Ruled grids are now interpreted spatially, including merged periods and batch alternatives. Poor photos and unsupported layouts can still require corrections. Missing dates, batch membership and count-only allocations cannot be invented; OCR never activates a schedule by itself.
 - Reminders are in-app. Background push notifications are not implemented or required for attendance tracking.
 - Offline marking requires an initial online login/load. Timetable editing, image upload and account management require connectivity.
 - Browser storage may be cleared by the device. Sync queued marks before clearing site data or changing devices.

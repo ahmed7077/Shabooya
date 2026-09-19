@@ -43,6 +43,9 @@ export const entrySchema = z
     on_date: z.union([dateSchema, z.literal('')]),
     is_active: z.boolean(),
     needs_review: z.boolean().optional(),
+    month_weeks: z.array(z.number().int().min(1).max(5)).max(5).default([]),
+    source_text: z.string().max(2000).optional(),
+    review_reason: z.string().max(500).optional(),
   })
   .refine(
     (e) => e.end_time > e.start_time,
