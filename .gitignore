@@ -17,5 +17,6 @@ supabase/.temp/
 
 .vercel
 /SMTP key- Shabooya.txt
+/public/ocr/
 
 .env*

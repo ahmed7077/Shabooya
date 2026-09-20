@@ -239,9 +239,10 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
         setWarning(result.warnings.join(' '));
       }
       setReviewed(false);
-    } catch {
+    } catch (cause) {
+      console.error('Timetable extraction failed', cause);
       setWarning(
-        "We couldn't reliably read this timetable. Try Again or Create Timetable Manually below.",
+        'Automatic extraction could not start. Check your connection, disable content blocking for this site, and try again. You can still create the timetable manually below.',
       );
     } finally {
       setBusy(false);
