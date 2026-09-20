@@ -4,6 +4,10 @@ Status: the application is implemented. A hosted release still requires Supabase
 
 ## Implemented
 
+- [x] Shabooya brand, semantic charcoal/gray/blue/green/terracotta themes, revised auth and app shell, accessible mobile navigation and named URLs with browser Back/Forward.
+- [x] Cumulative attendance trend with date exploration/text data, present/absent ring, subject target bars and actual session-type filtering.
+- [x] Today's marking-completion bar, subjects needing attention, interactive attend/miss/target planning, grouped import review, drag/drop and draft save/cancel controls.
+
 - [x] Email/password signup, sign-in, sign-out, recovery/reset screens, persistent authentication and session refresh.
 - [x] Personal profile: name, email, institution, course, semester/year, optional student ID and timezone.
 - [x] Private JPG/JPEG/PNG timetable upload, supported device file/camera picker, compression, progress, preview, replacement, removal and retry.

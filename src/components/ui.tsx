@@ -14,7 +14,7 @@ export function Brand() {
       <span className="brand-icon">
         <CheckCheck size={24} />
       </span>
-      rollcall<span className="brand-dot">.</span>
+      Shabooya<span className="brand-dot">.</span>
     </span>
   );
 }
@@ -75,15 +75,21 @@ export function Modal({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
     return () => dialog?.close();
   }, []);
   return (
-    <dialog ref={ref} className="modal" onCancel={onClose}>
+    <dialog
+      ref={ref}
+      className="modal"
+      aria-labelledby={titleId}
+      onCancel={onClose}
+    >
       <div className="modal-heading">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-button" aria-label="Close" onClick={onClose}>
           <X />
         </button>

@@ -95,7 +95,8 @@ export function SettingsScreen({
               <h2>{data.profile?.name}</h2>
               <p>{user.email}</p>
               <small>
-                {data.profile?.course} · {data.profile?.university}
+                {data.profile?.course} · {data.profile?.semester} ·{' '}
+                {data.profile?.university}
               </small>
             </div>
           </div>
@@ -118,7 +119,7 @@ export function SettingsScreen({
           </p>
           <button className="settings-row" onClick={install}>
             <Download size={19} />
-            <span>Install rollcall</span>
+            <span>Install Shabooya</span>
             <ChevronRight size={17} />
           </button>
           <button
@@ -181,7 +182,7 @@ export function SettingsScreen({
               Remind me about unmarked classes in the app
             </label>
             <p className="fine-print">
-              Reminders appear while using rollcall. Background push
+              Reminders appear while using Shabooya. Background push
               notifications are not required or enabled.
             </p>
             <button className="button primary" disabled={busy || !online}>
@@ -271,7 +272,7 @@ export function SettingsScreen({
           </div>
           <button
             className="text-button"
-            disabled={!!pending}
+            disabled={!!pending || !online}
             onClick={async () => {
               await clearLocal(user.id);
               await refresh();

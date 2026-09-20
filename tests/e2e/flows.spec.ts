@@ -61,6 +61,7 @@ async function timetable(page: Page) {
   await page.screenshot({
     path: `test-results/editor-${page.viewportSize()!.width}.png`,
     fullPage: true,
+    animations: 'disabled',
   });
   await page
     .getByRole('button', { name: 'Confirm timetable', exact: true })
@@ -84,6 +85,7 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await page.screenshot({
     path: `test-results/dashboard-light-${page.viewportSize()!.width}.png`,
     fullPage: true,
+    animations: 'disabled',
   });
   await page
     .getByRole('button', { name: 'Mark Anatomy absent', exact: true })
@@ -108,6 +110,7 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await page.screenshot({
     path: `test-results/calendar-${page.viewportSize()!.width}.png`,
     fullPage: true,
+    animations: 'disabled',
   });
   await nav(page, 'Timetable');
   await expect(
@@ -125,6 +128,7 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await page.screenshot({
     path: `test-results/settings-${page.viewportSize()!.width}.png`,
     fullPage: true,
+    animations: 'disabled',
   });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(
@@ -137,6 +141,7 @@ test('student journey: onboarding, confirmation, marking, history, calendar, the
   await page.screenshot({
     path: `test-results/dashboard-${page.viewportSize()!.width}.png`,
     fullPage: true,
+    animations: 'disabled',
   });
 });
 test('offline reload retains queued attendance and syncs on reconnect', async ({
@@ -229,7 +234,7 @@ test('responsive first-use layout and password reset request', async ({
   page,
 }) => {
   await page.goto('/');
-  for (const width of [320, 375, 390, 430, 768, 1440]) {
+  for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
       await page.evaluate(
@@ -241,6 +246,142 @@ test('responsive first-use layout and password reset request', async ({
   await page.getByLabel('Email address').fill('student@example.com');
   await page.getByRole('button', { name: 'Send reset link' }).click();
   await expect(page.getByRole('status')).toContainText('If an account exists');
+});
+
+test('protected URLs, browser history, saved session and accessible analytics', async ({
+  page,
+}) => {
+  await page.goto('/attendance');
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.locator('.stat-grid')).toHaveCount(0);
+  await page.getByLabel('Email address').fill('unknown@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('wrong-password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.locator('.error-text')).toContainText('Could not sign in');
+  await onboard(page);
+  await expect(page).toHaveURL(/\/home$/);
+  await timetable(page);
+  await page
+    .getByRole('button', { name: 'Mark Anatomy present', exact: true })
+    .click();
+  await nav(page, 'Attendance');
+  await expect(page).toHaveURL(/\/attendance$/);
+  await expect(
+    page.getByRole('heading', { name: 'Attendance trend' }),
+  ).toBeVisible();
+  await page.getByLabel('Explore a date').selectOption({ index: 0 });
+  await expect(page.locator('.chart-readout')).toContainText('100.0%');
+  await page.getByLabel('Miss next N classes').fill('1');
+  await expect(page.locator('.projected-result')).toContainText('80.0%');
+  await page.screenshot({
+    path: `test-results/analytics-${page.viewportSize()?.width ?? 'default'}.png`,
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await nav(page, 'Calendar');
+  await page.goBack();
+  await expect(page).toHaveURL(/\/attendance$/);
+  await expect(
+    page.getByRole('heading', { name: 'Attendance trend' }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Attendance trend' }),
+  ).toBeVisible();
+  await page.goto('/login');
+  await expect(page).toHaveURL(/\/home$/);
+});
+
+test('invalid recovery links and Shabooya install metadata', async ({
+  page,
+  request,
+}) => {
+  await page.goto(
+    '/reset-password#error=access_denied&error_description=expired',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Send reset link' }),
+  ).toBeVisible();
+  await expect(page.locator('.error-text')).toContainText('invalid or expired');
+  const manifest = await (await request.get('/manifest.webmanifest')).json();
+  expect(manifest).toMatchObject({
+    name: 'Shabooya',
+    short_name: 'Shabooya',
+    display: 'standalone',
+  });
+  await expect(page).toHaveTitle(/Shabooya/);
+});
+
+test('valid password recovery updates credentials and returns to onboarding', async ({
+  page,
+  request,
+}) => {
+  const response = await request.post('http://127.0.0.1:54329/auth/v1/signup', {
+    data: { email: 'recovery@example.com', password: 'original-password-123' },
+  });
+  const session = await response.json();
+  await page.goto(
+    `/reset-password#access_token=${session.access_token}&refresh_token=${session.refresh_token}&expires_in=3600&token_type=bearer&type=recovery`,
+  );
+  await expect(page.getByLabel('New password')).toBeVisible();
+  await page.getByLabel('New password').fill('replacement-password-123');
+  await page.getByRole('button', { name: 'Save new password' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Let’s start with you.' }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/onboarding$/);
+  const result = await request.post(
+    'http://127.0.0.1:54329/auth/v1/token?grant_type=password',
+    {
+      data: {
+        email: 'recovery@example.com',
+        password: 'replacement-password-123',
+      },
+    },
+  );
+  expect(result.ok()).toBe(true);
+});
+
+test('draft save, cancel, duplicate and confirmed deletion preserve the active schedule', async ({
+  page,
+}) => {
+  await onboard(page);
+  await timetable(page);
+  await nav(page, 'Profile');
+  await page.getByRole('button', { name: 'Replace / edit timetable' }).click();
+  await page.getByLabel('Subject 1', { exact: true }).fill('Temporary edit');
+  await page.getByRole('button', { name: 'Cancel edit', exact: true }).click();
+  await page.locator('.entry-editor > summary').click();
+  await expect(page.getByLabel('Subject 1', { exact: true })).toHaveValue(
+    'Anatomy',
+  );
+  await page.getByLabel('Subject 1', { exact: true }).fill('Physiology');
+  await page.getByRole('button', { name: 'Save class', exact: true }).click();
+  await expect(page.locator('.entry-editor')).not.toHaveAttribute('open', '');
+  await page.locator('.entry-editor > summary').click();
+  await page.getByRole('button', { name: 'Duplicate', exact: true }).click();
+  await expect(page.locator('.entry-editor')).toHaveCount(2);
+  await page
+    .locator('.entry-editor')
+    .last()
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: 'Delete this class?' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep it', exact: true }).click();
+  await expect(page.locator('.entry-editor')).toHaveCount(2);
+  await page
+    .locator('.entry-editor')
+    .last()
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page.locator('.entry-editor')).toHaveCount(1);
+  await nav(page, 'Home');
+  await expect(
+    page.getByRole('heading', { name: 'Anatomy', exact: true }),
+  ).toBeVisible();
 });
 
 test('cross-device conflicts keep both marks until the student chooses', async ({

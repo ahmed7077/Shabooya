@@ -35,6 +35,8 @@ interface AppContextValue {
   signOut: () => Promise<void>;
   recovery: boolean;
   finishRecovery: () => void;
+  notice: string;
+  notify: (message: string) => void;
 }
 const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -47,6 +49,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [error, setError] = useState(''),
     [conflicts, setConflicts] = useState<Conflict[]>([]),
     [recovery, setRecovery] = useState(false);
+  const [notice, notify] = useState('');
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = setTimeout(() => notify(''), 4500);
+    return () => clearTimeout(timeout);
+  }, [notice]);
   const userRef = useRef<User | null>(null),
     activeSyncs = useRef(0);
   const apply = useCallback(
@@ -74,6 +82,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await navigator.locks.request('rollcall-data', async () => {
           if (userRef.current?.id !== current.id) return;
           const local = await readLocal(current.id);
+          const hadQueue = local.queue.length > 0;
           const unresolved: Conflict[] = [];
           for (const mark of [...local.queue]) {
             if (userRef.current?.id !== current.id) return;
@@ -113,6 +122,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           await writeLocal(current.id, { snapshot, queue: local.queue });
           apply(snapshot, local.queue);
           setConflicts(unresolved);
+          if (hadQueue && !local.queue.length) notify('Attendance synced.');
           setError('');
         });
       } catch {
@@ -135,6 +145,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     let alive = true;
+    const recoveryError =
+      new URLSearchParams(location.hash.slice(1)).get('error_description') ||
+      new URLSearchParams(location.search).get('error_description');
+    if (recoveryError) {
+      setError(
+        'This sign-in or recovery link is invalid or expired. Request a new link below.',
+      );
+      window.history.replaceState(null, '', '/forgot-password');
+    }
     const accept = async (next: User | null) => {
       const previous = userRef.current;
       userRef.current = next;
@@ -174,9 +193,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       void sync();
     };
-    void supabase.auth.getSession().then(({ data }) => {
-      if (alive) void accept(data.session?.user || null);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error && alive)
+          setError(
+            'Your session could not be restored. Sign in again to continue.',
+          );
+        if (alive) void accept(data.session?.user || null);
+      })
+      .catch(() => {
+        if (alive) {
+          setError('Your session could not be restored. Sign in again.');
+          setLoading(false);
+        }
+      });
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === 'PASSWORD_RECOVERY') setRecovery(true);
@@ -235,6 +266,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         await writeLocal(current.id, local);
         apply(local.snapshot, local.queue);
+        notify(
+          navigator.onLine
+            ? 'Attendance saved on this device. Syncing…'
+            : 'Attendance saved offline. It will sync when you reconnect.',
+        );
       });
       void sync(false);
     } catch (e) {
@@ -291,6 +327,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         signOut,
         recovery,
         finishRecovery: () => setRecovery(false),
+        notice,
+        notify,
       }}
     >
       {children}

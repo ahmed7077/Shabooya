@@ -1,5 +1,5 @@
 {
-  "name": "rollcall",
+  "name": "shabooya",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -16,30 +16,31 @@
     "validate": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build"
   },
   "dependencies": {
-    "next": "16.3.5",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
     "@supabase/supabase-js": "^2.57.0",
-    "zod": "^4.1.0",
+    "@visx/shape": "^4.0.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "idb": "^8.0.3",
     "lucide-react": "^0.577.0",
-    "tesseract.js": "^7.0.0"
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tesseract.js": "^7.0.0",
+    "zod": "^4.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
+    "@electric-sql/pglite": "^0.3.14",
+    "@playwright/test": "^1.55.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/node": "^22.0.0",
-    "tailwindcss": "^4.1.0",
-    "@tailwindcss/postcss": "^4.1.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.5",
     "prettier": "^3.6.0",
-    "vitest": "^3.2.0",
-    "@playwright/test": "^1.55.0",
-    "@electric-sql/pglite": "^0.3.14",
-    "sharp": "^0.34.0"
+    "sharp": "^0.35.4",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.1"
   }
 }

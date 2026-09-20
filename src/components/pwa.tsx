@@ -93,7 +93,7 @@ export function PwaControls({
           {standalone ? (
             <p>
               <Check size={18} />
-              rollcall is running as an installed app.
+              Shabooya is running as an installed app.
             </p>
           ) : (
             <>
@@ -101,7 +101,7 @@ export function PwaControls({
                 <Download size={32} />
               </div>
               <p>
-                Keep your timetable one tap away. Install rollcall on your home
+                Keep your timetable one tap away. Install Shabooya on your home
                 screen.
               </p>
               {ios ? (

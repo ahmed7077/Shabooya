@@ -1,22 +1,24 @@
 # Validation record
 
-Validated on Windows with Node.js 22.17.1; extraction updates checked on 19 September 2026.
+Validated on Windows with Node.js 22.17.1; Shabooya product pass checked on 20 September 2026.
 
-| Check                  | Result                                                                |
-| ---------------------- | --------------------------------------------------------------------- |
-| `npm run typecheck`    | Passed, strict TypeScript                                             |
-| `npm run lint`         | Passed, no warnings                                                   |
-| `npm run format:check` | Passed                                                                |
-| `npm test`             | 65 tests passed across 5 files                                        |
-| `npm run build`        | Passed, production Next.js build and generated service worker         |
-| `npm run test:e2e`     | 12 tests passed, mobile and desktop Chromium                          |
-| `npm audit --omit=dev` | No reported production dependency vulnerabilities at the time checked |
+| Check                  | Result                                                        |
+| ---------------------- | ------------------------------------------------------------- |
+| `npm run typecheck`    | Passed, strict TypeScript                                     |
+| `npm run lint`         | Passed, no warnings                                           |
+| `npm run format:check` | Passed                                                        |
+| `npm test`             | 68 tests passed across 6 files                                |
+| `npm run build`        | Passed, production Next.js build and generated service worker |
+| `npm run test:e2e`     | 20 tests passed, mobile and desktop Chromium                  |
+| `npm audit`            | No reported dependency vulnerabilities at the time checked    |
+
+The product pass adds Shabooya branding, semantic themes, responsive charts, named URLs, draft save/cancel/delete controls and recovery-link handling. The chart library is lazy-loaded. Core semantic text/background pairs were checked at 4.5:1 or better in both themes. See `SHABOOYA.md` for exact configuration and preserved limitations.
 
 ## Browser coverage
 
-The browser suite exercises signup protocol, profile onboarding, manual timetable creation/confirmation, attendance marking/correction, percentages, subject details/history, calendar/week navigation, dark theme, logout/sign-in with recovered data, image upload, occurrence cancellation/restoration, holidays, timetable replacement preserving history, and account deletion.
+The browser suite additionally checks direct protected URLs, failed sign-in, browser Back, authenticated reloads, valid and expired recovery links, manifest naming, chart exploration, combined projections, and draft save/cancel/duplicate/deletion. It exercises signup protocol, profile onboarding, manual timetable creation/confirmation, attendance marking/correction, percentages, subject details/history, calendar/week navigation, dark theme, logout/sign-in with recovered data, image upload, occurrence cancellation/restoration, holidays, timetable replacement preserving history, and account deletion.
 
-Offline tests load the actual production service worker, disconnect the browser, mark attendance, reload while offline, reconnect and confirm synchronization. A two-context test creates a real database revision conflict and resolves it through the UI. Responsive tests exercise all five main screens at 320, 375, 390, 430, 768 and 1440 px. The mobile project uses an iPhone-sized Chromium viewport; it does not claim to run iOS Safari.
+Offline tests load the actual production service worker, disconnect the browser, mark attendance, reload while offline, reconnect and confirm synchronization. A two-context test creates a real database revision conflict and resolves it through the UI. Responsive tests exercise all five main screens at 320, 375, 390, 430, 768, 1024 and 1440 px. The mobile project uses an iPhone-sized Chromium viewport; it does not claim to run iOS Safari.
 
 The screenshots in `docs/images/` show a disposable test account. They are documentation only; production never loads these records. The dashboard, calendar, editor and dark settings screenshots were visually inspected for spacing, overflow, contrast, control layout and navigation.
 
@@ -30,4 +32,4 @@ Tests run the actual production migration in PostgreSQL (PGlite), including RLS,
 
 No live Supabase project credentials or Vercel project were supplied. Auth email delivery, hosted Storage behavior, live JWT verification, Vercel deployment and physical iPhone/Android installation have **not** been claimed as verified. The browser test adapter fixtures Auth responses and object bytes while executing the real relational database logic. Complete `RELEASE-CHECKLIST.md` after connecting your services.
 
-The initial GitHub checkpoint intentionally captured unfinished validation and failed its formatting check. The subsequent validation commit fixed formatting. Its Linux browser run exposed a race in the conflict test: the test could reconnect the first device before the second device's write completed. The test now waits for the local persisted mark and the actual database responses, including the expected revisions. All six repeated conflict cases passed locally (three mobile and three desktop). Use the latest GitHub Actions run for the current remote status.
+GitHub Actions repeats the quality checks on Linux. Consult the latest run for remote status.

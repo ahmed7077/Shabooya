@@ -1,7 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-export const configured = !!url && !!key && !url.includes('YOUR_PROJECT');
+function validPublicConfig() {
+  if (!url || !key || /YOUR_PROJECT|YOUR_PUBLIC/.test(`${url} ${key}`))
+    return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' ||
+      (parsed.protocol === 'http:' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname))
+    );
+  } catch {
+    return false;
+  }
+}
+export const configured = validPublicConfig();
 export const supabase = configured
   ? createClient(url!, key!, {
       auth: {

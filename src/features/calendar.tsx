@@ -82,6 +82,7 @@ export function Calendar({
             onClick={() => {
               setCursor(new Date(`${today}T12:00:00`));
               setSelected(today);
+              if (week) setView('day');
             }}
           >
             Today
@@ -117,7 +118,10 @@ export function Calendar({
                 aria-pressed={selected === key}
                 key={key}
                 className={`${selected === key ? 'selected' : ''} ${key === today ? 'today' : ''} ${!week && !isSameMonth(date, cursor) ? 'outside' : ''}`}
-                onClick={() => setSelected(key)}
+                onClick={() => {
+                  setSelected(key);
+                  if (week) setView('day');
+                }}
               >
                 <span>{format(date, 'd')}</span>
                 <span className="calendar-marks">

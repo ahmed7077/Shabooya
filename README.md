@@ -1,6 +1,8 @@
-# rollcall
+# Shabooya
 
 A mobile-first personal attendance PWA. Each student supplies their own timetable and keeps their own attendance. There are no faculty roles, administrators, institution integrations or shared timetables.
+
+**Roll call, but smarter.** Shabooya includes a semantic light/dark design system, cumulative attendance charts, subject target bars, present/absent breakdown, planning calculator, mobile timeline, and grouped timetable review. See [the product and release notes](docs/SHABOOYA.md).
 
 **The application is implemented, but a live deployment requires your Supabase project, email sender and Vercel account.** Without public Supabase configuration, the app shows an honest setup state. It never substitutes sample data for your backend.
 
@@ -70,10 +72,10 @@ npm start
 ## Supabase setup — exact steps
 
 1. Create a **Free** Supabase project. Choose a nearby region and save the database password privately. Wait until provisioning completes.
-2. Open **SQL Editor → New query**. Run the SQL files in `supabase/migrations/` in filename order, once each. Start with `202609180001_rollcall.sql`, then `202609180002_ordinal_weekdays.sql`. The first creates tables, constraints, the attendance view, RPCs, RLS and the private `timetable-images` bucket; the second adds ordinal weekday recurrence. If you already applied the first migration, apply only the second. These are not upgrades for the archived Expo schema.
+2. Open **SQL Editor → New query**. Run the SQL files in `supabase/migrations/` in filename order, once each. Start with `202609180001_Shabooya.sql`, then `202609180002_ordinal_weekdays.sql`. The first creates tables, constraints, the attendance view, RPCs, RLS and the private `timetable-images` bucket; the second adds ordinal weekday recurrence. If you already applied the first migration, apply only the second. These are not upgrades for the archived Expo schema.
 3. In **Storage**, verify `timetable-images` is **private**, allows JPEG/PNG, and has a 5 MB stored-file limit. The browser accepts source images up to 20 MB and compresses them before uploading.
 4. In **Authentication → Sign In / Providers → Email**, enable email/password authentication, keep email confirmation enabled, and set the minimum password length to at least 10.
-5. In **Authentication → URL Configuration**, set Site URL to the eventual HTTPS production URL. While developing, use `http://localhost:3000`. Add exact authorized redirect URLs for localhost and each trusted preview/production origin. Do not use unrestricted wildcard domains. Confirmation and recovery return to the application root.
+5. In **Authentication → URL Configuration**, set Site URL to the eventual HTTPS production URL. While developing, use `http://localhost:3000`. Add both the root URL and `/reset-password` for localhost and each trusted preview/production origin, for example `http://localhost:3000` and `http://localhost:3000/reset-password`. Do not use unrestricted wildcard domains. Confirmation returns to the root; recovery returns to `/reset-password`. URLs are generated from the browser's current origin.
 6. Configure custom SMTP as below. Test confirmation and password recovery with an address that is not a Supabase organization member.
 7. From **Project Settings → API** (or the project's Connect dialog), copy the project URL and public **publishable key** or legacy **anon key**. Put them in `.env.local`:
 
@@ -94,7 +96,7 @@ An existing SMTP account can be used. One free-tier option is Brevo (300 emails/
 
 1. Create a free sender account and complete its transactional-email activation. Add and verify a sender address you control. Authenticate an existing domain if available; provider sender restrictions and deliverability vary.
 2. In Brevo's **SMTP & API → SMTP**, create an SMTP key and copy the displayed SMTP login.
-3. In Supabase **Authentication → Email → SMTP Settings**, enable custom SMTP. Set host `smtp-relay.brevo.com`, port `587`, username to the displayed SMTP login, password to the SMTP key, sender email to the verified address, and sender name to `rollcall`.
+3. In Supabase **Authentication → Email → SMTP Settings**, enable custom SMTP. Set host `smtp-relay.brevo.com`, port `587`, username to the displayed SMTP login, password to the SMTP key, sender email to the verified address, and sender name to `Shabooya`.
 4. Disable email-link tracking at the sender if offered. Send a real signup and password-reset test. Check spam folders and provider logs. Keep credentials only in Supabase's SMTP configuration.
 
 See [Brevo SMTP configuration](https://help.brevo.com/hc/en-us/articles/7924908994450-Send-transactional-emails-using-Brevo-SMTP). If a free sender does not approve the account, use another existing free SMTP account; do not assume disabling confirmations makes password recovery work. A custom domain is optional for hosting but may be useful or required by your chosen sender.
@@ -165,13 +167,13 @@ The free Vercel subdomain is sufficient. Vercel Hobby is for personal/non-commer
 1. Open the deployed HTTPS URL in **Safari**.
 2. Sign up, confirm your email, complete your profile and confirm your own timetable.
 3. Tap **Share → Add to Home Screen → Add**.
-4. Open rollcall from its home-screen icon. It opens standalone, with bottom navigation above the home indicator.
-5. Open it online once and allow the initial cache to finish before going offline. Use **Profile → Install rollcall** for instructions. Installed mode never shows an installation instruction prompt.
+4. Open Shabooya from its home-screen icon. It opens standalone, with bottom navigation above the home indicator.
+5. Open it online once and allow the initial cache to finish before going offline. Use **Profile → Install Shabooya** for instructions. Installed mode never shows an installation instruction prompt.
 
 ## Android installation
 
 1. Open the HTTPS URL in **Chrome** and create your account/timetable.
-2. Tap **Profile → Install rollcall → Install app** when the browser offers installation, or Chrome's menu → **Install app / Add to Home screen**.
+2. Tap **Profile → Install Shabooya → Install app** when the browser offers installation, or Chrome's menu → **Install app / Add to Home screen**.
 3. Open it from the home screen. Connect once to prepare the offline cache.
 
 ## Offline and updates

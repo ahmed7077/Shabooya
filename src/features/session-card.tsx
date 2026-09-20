@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Check, X, MoreHorizontal, MapPin } from 'lucide-react';
+import { Check, X, MoreHorizontal, MapPin, Clock3 } from 'lucide-react';
 import type { Session } from '@/types/domain';
 import { hasOccurred } from '@/lib/attendance/calculator';
 import { useApp } from '@/components/app-provider';
@@ -51,7 +51,10 @@ export function SessionCard({
     }
   }
   return (
-    <article className={`session-card ${cancelled ? 'cancelled' : ''}`}>
+    <article
+      data-status={s.attendance_status || 'pending'}
+      className={`session-card ${cancelled ? 'cancelled' : ''}`}
+    >
       <div className="session-time">
         {showDate && (
           <small>
@@ -104,6 +107,7 @@ export function SessionCard({
             </>
           ) : (
             <span className="status">
+              <Clock3 size={13} />
               {current ? 'Mark after class ends' : 'Upcoming'}
             </span>
           )}

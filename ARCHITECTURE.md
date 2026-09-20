@@ -8,7 +8,9 @@ Domain logic lives outside UI components. Zod validates profile, timezone, dates
 
 ## Authentication
 
-Supabase JS owns email/password auth, persistent browser session, URL confirmation/recovery handling and token refresh. Auth events drive the authenticated provider. Password resets return to `/` and the `PASSWORD_RECOVERY` event opens the new-password form. Configure SMTP and redirects in Supabase. No service-role secret is required by the application. Local sign-out clears IndexedDB and session drafts; pending marks must synchronize first.
+Supabase JS owns email/password auth, persistent browser session, URL confirmation/recovery handling and token refresh. Auth events drive the authenticated provider. Password resets return to `/reset-password` and the `PASSWORD_RECOVERY` event opens the new-password form. Configure SMTP and redirects in Supabase. No service-role secret is required by the application. Local sign-out clears IndexedDB and session drafts; pending marks must synchronize first.
+
+Named static routes in `[screen]/page.tsx` serve the same public shell. Native History API transitions retain the provider and offline queue while making reload, deep links and Back/Forward meaningful. Client route guards gate all private UI; actual data authorization remains RLS. No middleware cookie session is mixed with the existing browser-owned session.
 
 ## Database and authorization
 
@@ -29,6 +31,8 @@ Uploaded images are decoded/resized to a 2400-pixel long edge and JPEG-encoded b
 `calculateAttendance` filters cancelled sessions, future end instants and null marks before counting. Overall counts are summed. `calculatePercentage` returns null for 0/0. Targets are decimals in [0,1]. Missable classes are the maximum nonnegative integer satisfying the target, clamped to zero if below target. Recovery returns one class for an empty history and a positive target, zero for a zero target, and infinity for a 100% target after any absence. Small numerical tolerances avoid floating-point off-by-one integer rounding.
 
 All UI percentages use one decimal. Present/Absent actions are disabled until the end instant. The database applies the same timing/cancellation checks to prevent bypass through API calls.
+
+`attendanceTrend` groups eligible sessions by class date and uses the same count/percentage functions for cumulative points. The analytics component lazy-loads visx shape rendering, includes a native date selector and text table, and shares semantic light/dark tokens. Marking-completion progress is explicitly a separate metric from attendance.
 
 ## Offline and concurrency
 

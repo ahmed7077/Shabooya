@@ -2,14 +2,15 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'rollcall — Personal attendance',
-    short_name: 'rollcall',
-    description: 'Your day, in focus. Personal attendance and timetable.',
+    name: 'Shabooya',
+    short_name: 'Shabooya',
+    description:
+      'Roll call, but smarter. Your personal timetable and attendance.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#f8f9f6',
-    theme_color: '#176958',
+    background_color: '#f3f5f7',
+    theme_color: '#2860c5',
     orientation: 'portrait-primary',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

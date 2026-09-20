@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ArrowLeft, ArrowUpRight, SlidersHorizontal } from 'lucide-react';
 import { useApp } from '@/components/app-provider';
 import {
@@ -12,6 +13,17 @@ import {
 } from '@/lib/attendance/calculator';
 import { Field, Empty } from '@/components/ui';
 import { SessionCard } from './session-card';
+const AttendanceCharts = dynamic(
+  () => import('@/components/attendance-charts'),
+  {
+    loading: () => (
+      <div
+        className="skeleton chart-skeleton"
+        aria-label="Loading attendance charts"
+      />
+    ),
+  },
+);
 export function Attendance({
   subject,
   pendingOnly = false,
@@ -23,16 +35,23 @@ export function Attendance({
 }) {
   const { data, mark } = useApp();
   const [projection, setProjection] = useState(3),
+    [missProjection, setMissProjection] = useState(0),
+    [targetOverride, setTargetOverride] = useState<number | null>(null),
+    [sessionType, setSessionType] = useState('All'),
     [selected, setSelected] = useState<string[]>([]),
     [page, setPage] = useState(1);
   if (!data) return null;
   const sessions = data.sessions.filter(
-      (s) => !subject || s.subject_name === subject,
+      (s) =>
+        (!subject || s.subject_name === subject) &&
+        (sessionType === 'All' || s.session_type === sessionType),
     ),
     stats = calculateAttendance(sessions),
-    target = subject
-      ? (data.settings.subject_targets[subject] ?? data.settings.target)
-      : data.settings.target;
+    target =
+      targetOverride ??
+      (subject
+        ? (data.settings.subject_targets[subject] ?? data.settings.target)
+        : data.settings.target);
   const missable = calculateMissableClasses(
       stats.present,
       stats.absent,
@@ -79,6 +98,32 @@ export function Attendance({
       </header>
       {!pendingOnly && (
         <>
+          <div className="analytics-toolbar">
+            <Field label="Session type">
+              <select
+                value={sessionType}
+                onChange={(e) => {
+                  setSessionType(e.target.value);
+                  setPage(1);
+                  setSelected([]);
+                }}
+              >
+                <option>All</option>
+                {[
+                  ...new Set(
+                    data.sessions
+                      .filter((s) => !subject || s.subject_name === subject)
+                      .map((s) => s.session_type),
+                  ),
+                ]
+                  .sort()
+                  .map((type) => (
+                    <option key={type}>{type}</option>
+                  ))}
+              </select>
+            </Field>
+            <span>Only completed, marked classes count.</span>
+          </div>
           <div className="stat-grid">
             <div className="panel main-stat">
               <span>Current attendance</span>
@@ -101,6 +146,15 @@ export function Attendance({
               </div>
             ))}
           </div>
+          <AttendanceCharts
+            sessions={sessions}
+            target={
+              subject
+                ? (data.settings.subject_targets[subject] ??
+                  data.settings.target)
+                : data.settings.target
+            }
+          />
           <section className="calculator panel">
             <div className="section-heading">
               <h2>
@@ -109,6 +163,24 @@ export function Attendance({
               </h2>
               <span className="count-pill">Target {target * 100}%</span>
             </div>
+            <Field
+              label="Planning target (%)"
+              hint="Explore a target here. Your saved requirement stays in Profile."
+            >
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={Number((target * 100).toFixed(1))}
+                onChange={(e) =>
+                  setTargetOverride(
+                    Math.min(100, Math.max(0, Number(e.target.value) || 0)) /
+                      100,
+                  )
+                }
+              />
+            </Field>
             <div className="calculator-grid">
               <div>
                 <small>ROOM TO MISS</small>
@@ -141,7 +213,7 @@ export function Attendance({
                 </p>
               </div>
               <div>
-                <Field label="What if, over the next…">
+                <Field label="Attend next N classes">
                   <input
                     type="number"
                     min="0"
@@ -160,6 +232,50 @@ export function Attendance({
                     }
                   />
                 </Field>
+                <Field label="Miss next N classes">
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={missProjection}
+                    onChange={(e) =>
+                      setMissProjection(
+                        Math.max(
+                          0,
+                          Math.min(
+                            1000,
+                            Math.floor(Number(e.target.value) || 0),
+                          ),
+                        ),
+                      )
+                    }
+                  />
+                </Field>
+                <div className="projected-result">
+                  <span>Combined projection</span>
+                  <strong>
+                    {percentageLabel(
+                      calculateProjection(
+                        stats.present,
+                        stats.absent,
+                        projection,
+                        missProjection,
+                      ),
+                    )}
+                  </strong>
+                  <progress
+                    aria-label="Projected attendance"
+                    value={
+                      calculateProjection(
+                        stats.present,
+                        stats.absent,
+                        projection,
+                        missProjection,
+                      ) || 0
+                    }
+                    max={100}
+                  />
+                </div>
                 <div className="projection">
                   <span>
                     Attend all{' '}
@@ -198,7 +314,7 @@ export function Attendance({
                 <span className="muted">Tap to explore</span>
               </div>
               <div className="subjects-grid">
-                {subjects.map((name, i) => {
+                {subjects.map((name) => {
                   const s = calculateAttendance(
                     sessions.filter((x) => x.subject_name === name),
                   );
@@ -206,11 +322,11 @@ export function Attendance({
                     data.settings.subject_targets[name] ?? data.settings.target;
                   return (
                     <button
-                      className="panel subject-detail-card"
+                      className={`panel subject-detail-card ${s.percentage === null ? 'neutral' : s.percentage < t * 100 ? 'warning' : 'healthy'}`}
                       key={name}
                       onClick={() => navigate(`Subject:${name}`)}
                     >
-                      <span className={`subject-icon tone-${i % 4}`}>
+                      <span className="subject-icon">
                         {(data.settings.subject_labels[name] || name)
                           .slice(0, 2)
                           .toUpperCase()}
@@ -222,7 +338,8 @@ export function Attendance({
                         <span style={{ width: `${s.percentage || 0}%` }} />
                       </div>
                       <small>
-                        {s.present} present · {s.absent} absent ·{' '}
+                        Target {Number((t * 100).toFixed(1))}% · {s.present}{' '}
+                        present · {s.absent} absent ·{' '}
                         {s.percentage === null
                           ? 'No marks'
                           : s.percentage < t * 100

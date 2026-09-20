@@ -13,6 +13,7 @@ for (const file of (await readdir('supabase/migrations'))
   .sort())
   await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
 const users = new Map(),
+  passwords = new Map(),
   objects = new Map();
 function session(user) {
   const encode = (v) => Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -84,6 +85,7 @@ async function serve(req, res) {
   if (url.pathname === '/__reset') {
     await db.exec('truncate auth.users cascade; delete from storage.objects;');
     users.clear();
+    passwords.clear();
     objects.clear();
     send({ ok: true });
     return;
@@ -102,6 +104,20 @@ async function serve(req, res) {
       let user =
         users.get(body.email) ||
         [...users.values()].find((u) => u.id === body.refresh_token);
+      if (
+        url.pathname.endsWith('/token') &&
+        (!user ||
+          (!body.refresh_token && passwords.get(user.id) !== body.password))
+      ) {
+        send(
+          {
+            message: 'Invalid login credentials',
+            error_code: 'invalid_credentials',
+          },
+          400,
+        );
+        return;
+      }
       if (!user) {
         user = {
           id: randomUUID(),
@@ -113,6 +129,7 @@ async function serve(req, res) {
           user_metadata: {},
         };
         users.set(user.email, user);
+        passwords.set(user.id, body.password);
         await db.query('insert into auth.users values($1,$2)', [
           user.id,
           user.email,
@@ -122,6 +139,8 @@ async function serve(req, res) {
       return;
     }
     if (url.pathname.endsWith('/user')) {
+      if (req.method === 'PUT' && body.password)
+        passwords.set(id, body.password);
       send([...users.values()].find((u) => u.id === id));
       return;
     }

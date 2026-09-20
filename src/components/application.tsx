@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   House,
   CalendarDays,
@@ -20,6 +20,7 @@ import { Attendance } from '@/features/attendance';
 import { Calendar } from '@/features/calendar';
 import { SettingsScreen } from '@/features/settings';
 import { PwaControls } from './pwa';
+import { tabFromLocation, tabPath } from '@/lib/routes';
 const NAV = [
   { name: 'Home', icon: House },
   { name: 'Timetable', icon: CalendarDays },
@@ -40,17 +41,58 @@ function Content() {
     recovery,
     conflicts,
     resolveConflict,
+    notice,
   } = useApp();
   const [tab, setTab] = useState('Home'),
     [editor, setEditor] = useState(false),
     [install, setInstall] = useState(false),
     [showInstall, setShowInstall] = useState(false),
     [, tick] = useState(0);
+  const activeTabRef = useRef(tab);
   useEffect(() => {
-    setTab('Home');
-    setEditor(false);
+    activeTabRef.current = tab;
+  }, [tab]);
+  useEffect(() => {
+    setTab(tabFromLocation());
+    setEditor(location.pathname === '/timetable-editor');
     setInstall(false);
   }, [user?.id]);
+  useEffect(() => {
+    const back = () => {
+      setTab(tabFromLocation());
+      setEditor(location.pathname === '/timetable-editor');
+    };
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, []);
+  useEffect(() => {
+    if (loading) return;
+    let path = location.pathname;
+    if (!user) {
+      if (
+        !['/login', '/signup', '/forgot-password', '/reset-password'].includes(
+          path,
+        )
+      )
+        path = '/login';
+    } else if (recovery) path = '/reset-password';
+    else if (data && !data.profile) path = '/onboarding';
+    else if (
+      data?.profile &&
+      [
+        '/',
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/reset-password',
+        '/onboarding',
+      ].includes(path)
+    )
+      path = '/home';
+    if (path !== location.pathname)
+      window.history.replaceState(null, '', path + location.hash);
+    document.title = `${!user ? 'Welcome' : recovery ? 'Reset password' : !data?.profile ? 'Your profile' : editor ? 'Timetable editor' : tab.startsWith('Subject:') ? tab.slice(8) : tab} · Shabooya`;
+  }, [loading, user, data, recovery, tab, editor]);
   useEffect(() => {
     const timer = setInterval(() => tick((n) => n + 1), 60000);
     setShowInstall(
@@ -60,15 +102,34 @@ function Content() {
     return () => clearInterval(timer);
   }, []);
   function navigate(value: string) {
+    activeTabRef.current = value;
+    window.history.pushState(null, '', tabPath(value));
     setTab(value);
     setEditor(false);
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  function editTimetable() {
+    window.history.pushState(null, '', '/timetable-editor');
+    setEditor(true);
+    window.scrollTo(0, 0);
+  }
+  function closeEditor() {
+    setEditor(false);
+    window.history.replaceState(null, '', tabPath(activeTabRef.current));
   }
   if (loading)
     return (
       <main className="loading-screen">
         <Brand />
-        <div className="loading-bar" />
+        <div
+          className="loading-shell"
+          role="status"
+          aria-label="Loading your workspace"
+        >
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton" />
+          ))}
+        </div>
         <p>Getting your day ready…</p>
       </main>
     );
@@ -85,6 +146,13 @@ function Content() {
       <main className="loading-screen">
         <Brand />
         <p>{error || 'Loading your personal space…'}</p>
+        {!error && (
+          <div className="loading-shell" aria-label="Loading classes">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton" />
+            ))}
+          </div>
+        )}
         <button className="button primary" onClick={() => void refresh()}>
           Retry
         </button>
@@ -121,7 +189,7 @@ function Content() {
               <Download size={21} />
               <strong>Your day. One tap away.</strong>
               <span>
-                Install rollcall
+                Install Shabooya
                 <ChevronRight size={14} />
               </span>
             </button>
@@ -144,6 +212,11 @@ function Content() {
         </div>
       </aside>
       <div className="main-area">
+        {notice && (
+          <div className="toast" role="status">
+            {notice}
+          </div>
+        )}
         <div className="topbar">
           <div className="mobile-brand">
             <Brand />
@@ -156,7 +229,9 @@ function Content() {
             <span className={`connection ${!online ? 'offline' : ''}`}>
               {!online ? <WifiOff size={14} /> : <span />}
               {!online
-                ? 'Offline'
+                ? pending
+                  ? `Offline · ${pending} saved`
+                  : 'Offline'
                 : syncing
                   ? 'Syncing…'
                   : pending
@@ -215,19 +290,16 @@ function Content() {
             </div>
           ))}
           {editor ? (
-            <TimetableEditor onClose={() => setEditor(false)} />
+            <TimetableEditor onClose={closeEditor} />
           ) : tab === 'Home' ? (
-            <Dashboard
-              navigate={navigate}
-              editTimetable={() => setEditor(true)}
-            />
+            <Dashboard navigate={navigate} editTimetable={editTimetable} />
           ) : tab === 'Timetable' ? (
-            <Calendar week editTimetable={() => setEditor(true)} />
+            <Calendar key="week" week editTimetable={editTimetable} />
           ) : tab === 'Calendar' ? (
-            <Calendar editTimetable={() => setEditor(true)} />
+            <Calendar key="month" editTimetable={editTimetable} />
           ) : tab === 'Profile' ? (
             <SettingsScreen
-              editTimetable={() => setEditor(true)}
+              editTimetable={editTimetable}
               install={() => setInstall(true)}
             />
           ) : (

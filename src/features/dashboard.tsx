@@ -35,6 +35,23 @@ export function Dashboard({
     (s) => hasOccurred(s) && s.status !== 'cancelled' && !s.attendance_status,
   );
   const subjects = [...new Set(data.sessions.map((s) => s.subject_name))];
+  const dayCount = sessions.filter((s) => s.status !== 'cancelled').length;
+  const attention = subjects.filter((name) => {
+    const stats = calculateAttendance(
+      data.sessions.filter((s) => s.subject_name === name),
+    );
+    return (
+      stats.percentage !== null &&
+      stats.percentage <
+        (data.settings.subject_targets[name] ?? data.settings.target) * 100
+    );
+  });
+  const health =
+    summary.percentage === null
+      ? 'neutral'
+      : summary.percentage < data.settings.target * 100
+        ? 'warning'
+        : 'healthy';
   const next = data.sessions.find(
     (s) => s.status !== 'cancelled' && !hasOccurred(s),
   );
@@ -66,19 +83,16 @@ export function Dashboard({
         </button>
       </header>
       <div className="dashboard-grid">
-        <section className="attendance-hero">
+        <section className={`attendance-hero ${health}`}>
           <div className="hero-copy">
             <span className="eyebrow">YOUR ATTENDANCE</span>
             <div className="hero-number">
               {percentageLabel(summary.percentage)}
-              <span className="trend">
-                <ArrowUpRight size={18} />
-              </span>
             </div>
             <p>
               {summary.counted
                 ? `${summary.present} present out of ${summary.counted} marked classes`
-                : 'Your first mark is the start of your story.'}
+                : 'No attendance yet'}
             </p>
             <span className="hero-target">
               <span />
@@ -94,18 +108,22 @@ export function Dashboard({
             }
           >
             <div>
-              <Check size={25} />
+              {health === 'healthy' ? (
+                <Check size={25} />
+              ) : (
+                <Clock3 size={25} />
+              )}
               <strong>
                 {summary.percentage === null
                   ? 'Let’s begin'
                   : summary.percentage >= data.settings.target * 100
                     ? 'On track'
-                    : 'Keep going'}
+                    : 'Below target'}
               </strong>
               <small>
                 {summary.percentage === null
                   ? 'One class at a time'
-                  : 'You’ve got this'}
+                  : `${summary.absent} absent`}
               </small>
             </div>
           </div>
@@ -132,6 +150,18 @@ export function Dashboard({
               </strong>
               <span>marked</span>
             </div>
+          </div>
+          <div className="marking-progress">
+            <progress
+              aria-label="Today’s marking completion"
+              value={marked}
+              max={dayCount || 1}
+            />
+            <small>
+              {dayCount
+                ? `${marked} of ${dayCount} marked · ${sessions.filter((s) => hasOccurred(s) && s.status !== 'cancelled' && !s.attendance_status).length} ready to mark`
+                : 'No classes scheduled today'}
+            </small>
           </div>
           <div className="next-class">
             <span className="icon-tile">
@@ -170,6 +200,26 @@ export function Dashboard({
             <ArrowRight size={16} />
           </span>
         </button>
+      )}
+      {attention.length > 0 && (
+        <section
+          className="attention-strip"
+          aria-label="Subjects needing attention"
+        >
+          <span className="eyebrow">NEEDS ATTENTION</span>
+          {attention.map((name) => (
+            <button
+              className="attention-link"
+              key={name}
+              onClick={() => navigate(`Subject:${name}`)}
+            >
+              {data.settings.subject_labels[name] || name}
+              <span>
+                Below target <ArrowRight size={15} />
+              </span>
+            </button>
+          ))}
+        </section>
       )}
       <div className="content-grid">
         <section>
@@ -229,7 +279,7 @@ export function Dashboard({
           </div>
           <div className="panel subject-snapshot">
             {subjects.length ? (
-              subjects.slice(0, 5).map((name, i) => {
+              subjects.slice(0, 5).map((name) => {
                 const stats = calculateAttendance(
                   data.sessions.filter((s) => s.subject_name === name),
                 );
@@ -237,12 +287,12 @@ export function Dashboard({
                   data.settings.subject_targets[name] ?? data.settings.target;
                 return (
                   <button
-                    className="subject-row"
+                    className={`subject-row ${stats.percentage === null ? 'neutral' : stats.percentage < target * 100 ? 'warning' : 'healthy'}`}
                     key={name}
                     onClick={() => navigate(`Subject:${name}`)}
                   >
                     <div>
-                      <span className={`subject-icon tone-${i % 4}`}>
+                      <span className="subject-icon">
                         {(data.settings.subject_labels[name] || name)
                           .slice(0, 2)
                           .toUpperCase()}

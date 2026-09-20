@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   ShieldCheck,
@@ -16,6 +16,38 @@ export function AuthScreen() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
+  useEffect(() => {
+    const update = () => {
+      setMode(
+        location.pathname === '/signup'
+          ? 'signup'
+          : ['/forgot-password', '/reset-password'].includes(location.pathname)
+            ? 'forgot'
+            : 'signin',
+      );
+      if (location.pathname === '/reset-password')
+        setError(
+          'Open a valid password reset link from your email, or request a new one.',
+        );
+    };
+    update();
+    window.addEventListener('popstate', update);
+    return () => window.removeEventListener('popstate', update);
+  }, []);
+  function switchMode(next: 'signin' | 'signup' | 'forgot') {
+    window.history.pushState(
+      null,
+      '',
+      next === 'signin'
+        ? '/login'
+        : next === 'signup'
+          ? '/signup'
+          : '/forgot-password',
+    );
+    setMode(next);
+    setNotice('');
+    setError('');
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -28,7 +60,7 @@ export function AuthScreen() {
       const client = db();
       if (mode === 'forgot') {
         const result = await client.auth.resetPasswordForEmail(email, {
-          redirectTo: location.origin,
+          redirectTo: `${location.origin}/reset-password`,
         });
         if (result.error) throw result.error;
         setNotice('If an account exists, a password reset link is on its way.');
@@ -63,7 +95,7 @@ export function AuthScreen() {
       <section className="auth-story">
         <Brand />
         <div>
-          <span className="eyebrow">A LITTLE CLARITY. EVERY CLASS.</span>
+          <span className="eyebrow">ROLL CALL, BUT SMARTER.</span>
           <h1>
             Show up.
             <br />
@@ -74,20 +106,20 @@ export function AuthScreen() {
             <br />
             One small space, just for you.
           </p>
-          <div className="story-illustration" aria-hidden="true">
-            <div className="illustration-top">
+          <div className="auth-benefits">
+            <div>
               <CalendarDays />
-              <span>YOUR NEXT CHAPTER</span>
-              <span className="illustration-dot" />
+              <span>
+                <strong>Your week, in order.</strong>A schedule that fits in
+                your pocket.
+              </span>
             </div>
-            <div className="illustration-bars">
-              {[48, 72, 56, 92, 78, 100, 88].map((n, i) => (
-                <span key={i} style={{ height: `${n}%` }} />
-              ))}
-            </div>
-            <div className="illustration-bottom">
-              <span>A little more consistent.</span>
+            <div>
               <ChartNoAxesCombined />
+              <span>
+                <strong>Your numbers, understood.</strong>Know where you stand
+                before the next class.
+              </span>
             </div>
           </div>
         </div>
@@ -177,10 +209,10 @@ export function AuthScreen() {
           <div className="auth-switch">
             {mode === 'signin' ? (
               <>
-                New here?{' '}
+                New to Shabooya?{' '}
                 <button
                   onClick={() => {
-                    setMode('signup');
+                    switchMode('signup');
                     setNotice('');
                     setError('');
                   }}
@@ -190,7 +222,7 @@ export function AuthScreen() {
                 <button
                   className="forgot"
                   onClick={() => {
-                    setMode('forgot');
+                    switchMode('forgot');
                     setNotice('');
                     setError('');
                   }}
@@ -201,7 +233,7 @@ export function AuthScreen() {
             ) : (
               <button
                 onClick={() => {
-                  setMode('signin');
+                  switchMode('signin');
                   setNotice('');
                   setError('');
                 }}
@@ -221,7 +253,7 @@ export function AuthScreen() {
   );
 }
 export function ProfileForm({ onDone }: { onDone?: () => void }) {
-  const { user, data, refresh } = useApp();
+  const { user, data, refresh, notify } = useApp();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const p = data?.profile;
@@ -250,6 +282,7 @@ export function ProfileForm({ onDone }: { onDone?: () => void }) {
       const result = await db().from('profiles').upsert(parsed.data);
       if (result.error) throw result.error;
       await refresh();
+      notify('Profile updated.');
       onDone?.();
     } catch {
       setError(
@@ -334,14 +367,29 @@ export function ProfileForm({ onDone }: { onDone?: () => void }) {
   );
 }
 export function Onboarding() {
+  const { signOut } = useApp();
+  const [error, setError] = useState('');
   return (
     <main className="onboarding">
       <Brand />
       <div className="panel">
         <span className="eyebrow">01 / A SPACE THAT’S YOURS</span>
         <h1>Let’s start with you.</h1>
-        <p>A few details to make rollcall feel like home.</p>
+        <p>A few details to make Shabooya feel like home.</p>
         <ProfileForm />
+        <ErrorText message={error} />
+        <button
+          className="text-button"
+          onClick={async () => {
+            try {
+              await signOut();
+            } catch {
+              setError('Could not sign out. Please try again.');
+            }
+          }}
+        >
+          Use another account
+        </button>
       </div>
     </main>
   );
@@ -362,13 +410,18 @@ export function ResetPassword() {
             const password = String(
               new FormData(e.currentTarget).get('password'),
             );
-            const { error } = await db().auth.updateUser({ password });
-            setBusy(false);
-            if (error)
+            setMessage('');
+            try {
+              const { error } = await db().auth.updateUser({ password });
+              if (error) throw error;
+              finishRecovery();
+            } catch {
               setMessage(
                 'Could not update your password. Request a new reset link and try again.',
               );
-            else finishRecovery();
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           <Field label="New password">

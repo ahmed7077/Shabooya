@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   Copy,
   Plus,
@@ -10,7 +10,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { useApp } from '@/components/app-provider';
-import { Field, ErrorText } from '@/components/ui';
+import { Field, ErrorText, Modal } from '@/components/ui';
 import { SESSION_TYPES, type Entry, type Timetable } from '@/types/domain';
 import { generateSessions } from '@/lib/timetable/generator';
 import { browserExtractor, compressImage } from '@/lib/timetable/extraction';
@@ -39,8 +39,15 @@ const newEntry = (): Entry => ({
   on_date: '',
   is_active: true,
 });
+function entryDay(entry: Entry) {
+  if (entry.recurrence === 'once' && entry.on_date) {
+    const day = new Date(`${entry.on_date}T12:00:00Z`).getUTCDay();
+    if (Number.isFinite(day)) return day;
+  }
+  return entry.day_of_week;
+}
 export function TimetableEditor({ onClose }: { onClose: () => void }) {
-  const { user, data, refresh, online, pending } = useApp();
+  const { user, data, refresh, online, pending, notify } = useApp();
   const [draft, setDraft] = useState<Timetable>(() => {
     const saved = sessionStorage.getItem(`rollcall-draft:${user!.id}`);
     if (saved) {
@@ -62,6 +69,9 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
         };
   });
   const [busy, setBusy] = useState(false),
+    [dragging, setDragging] = useState(false),
+    [deleting, setDeleting] = useState(''),
+    [collapsed, setCollapsed] = useState<string[]>([]),
     [error, setError] = useState(''),
     [reviewed, setReviewed] = useState(false),
     [file, setFile] = useState<File | null>(null),
@@ -80,6 +90,12 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
       ];
       return active.length === 1 ? active[0] : '';
     });
+  const savedEntries = useRef(
+    new Map(draft.entries.map((e) => [e.id, { ...e }])),
+  );
+  const orderedEntries = [...draft.entries].sort(
+    (a, b) => ((entryDay(a) + 6) % 7) - ((entryDay(b) + 6) % 7),
+  );
   const extractedBatches = [
     ...new Set(
       draft.entries.filter((e) => e.source_text && e.batch).map((e) => e.batch),
@@ -175,6 +191,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
       });
       setDraft((d) => ({ ...d, source_image_path: path }));
       setProgress('Image uploaded privately. Ready to extract.');
+      notify('Timetable image uploaded.');
     } catch (e) {
       setError((e as Error).message);
       setProgress('');
@@ -200,6 +217,12 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
           "We couldn't reliably read this timetable. Try Again or Create Timetable Manually below.",
         );
       } else {
+        result.entries.forEach((entry) =>
+          savedEntries.current.set(entry.id, {
+            ...entry,
+            is_active: entry.batch ? false : entry.is_active,
+          }),
+        );
         setDraft((d) => ({
           ...d,
           entries: [
@@ -241,6 +264,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
       setDraft((d) => ({ ...d, source_image_path: null }));
       setFile(null);
       setPreview('');
+      setProgress('');
     } catch {
       setError('Could not remove image. Try again.');
     } finally {
@@ -258,6 +282,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
       await rpc('activate_timetable', { draft });
       sessionStorage.removeItem(`rollcall-draft:${user!.id}`);
       await refresh();
+      notify('Timetable saved. Your schedule is ready.');
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -282,6 +307,20 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
           <p>Upload a photo or build your week. You have the final say.</p>
         </div>
       </header>
+      <ol className="import-steps" aria-label="Timetable import steps">
+        {['Upload', 'Processing', 'Review', 'Confirm'].map((step, i) => (
+          <li
+            key={step}
+            aria-current={
+              (busy ? 1 : reviewed ? 3 : draft.entries.length ? 2 : 0) === i
+                ? 'step'
+                : undefined
+            }
+          >
+            {i + 1}. {step}
+          </li>
+        ))}
+      </ol>
       <div className="editor-grid">
         <div className="stack">
           <section className="panel">
@@ -340,12 +379,25 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                 Start with an image <small>Optional</small>
               </span>
             </h2>
-            <label className="upload-zone">
+            <label
+              className={`upload-zone ${dragging ? 'dragging' : ''}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (!busy && online) setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragging(false);
+                const selected = event.dataTransfer.files[0];
+                if (selected && !busy && online) void upload(selected);
+              }}
+            >
               <Upload />
               <strong>
                 {preview ? 'Replace timetable image' : 'Upload your timetable'}
               </strong>
-              <span>JPG or PNG · up to 20 MB</span>
+              <span>Drop a photo or tap to choose · JPG / PNG · 20 MB</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png"
@@ -376,7 +428,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                     className="icon-button"
                     aria-label="Remove image"
                     disabled={busy}
-                    onClick={() => void removeImage()}
+                    onClick={() => setDeleting('image')}
                   >
                     <Trash2 size={18} />
                   </button>
@@ -498,232 +550,300 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
             </div>
           )}
           <div className="entry-list">
-            {draft.entries.map((e, i) => (
-              <details
-                className="entry-editor"
-                key={e.id}
-                open={!e.source_text || e.needs_review}
-              >
-                <summary>
-                  <span className="entry-day">
-                    {e.recurrence === 'once'
-                      ? e.on_date || 'Once'
-                      : DAYS[e.day_of_week].slice(0, 3)}
-                  </span>
-                  <span>
-                    <strong>{e.subject_name || 'New class'}</strong>
-                    <small>
-                      {e.start_time}–{e.end_time} · {e.session_type}
-                      {!e.is_active ? ' · Inactive' : ''}
-                    </small>
-                  </span>
-                  {e.needs_review && <span className="review-tag">Review</span>}
-                </summary>
-                <div className="entry-fields">
-                  {e.source_text && (
-                    <details>
-                      <summary>Text from this timetable cell</summary>
-                      <pre className="ocr-text">{e.source_text}</pre>
-                    </details>
+            {orderedEntries.map((e, position) => {
+              const i = draft.entries.findIndex((entry) => entry.id === e.id);
+              return (
+                <Fragment key={e.id}>
+                  {(position === 0 ||
+                    entryDay(orderedEntries[position - 1]) !== entryDay(e)) && (
+                    <h3 className="entry-group-title">{DAYS[entryDay(e)]}</h3>
                   )}
-                  {e.review_reason && (
-                    <div className="notice">
-                      <p>{e.review_reason}</p>
-                      <button
-                        className="text-button"
-                        onClick={() =>
-                          patchEntry(e.id, {
-                            review_reason: '',
-                            needs_review: false,
-                          })
-                        }
-                      >
-                        I have checked and resolved this row
-                      </button>
-                    </div>
-                  )}
-                  <Field label={`Subject ${i + 1}`}>
-                    <input
-                      value={e.subject_name}
-                      onChange={(event) =>
-                        patchEntry(e.id, { subject_name: event.target.value })
-                      }
-                      maxLength={100}
-                      placeholder="Subject name"
-                    />
-                  </Field>
-                  <div className="form-grid">
-                    <Field label="Recurrence">
-                      <select
-                        value={e.recurrence}
-                        onChange={(event) =>
-                          patchEntry(e.id, {
-                            recurrence: event.target
-                              .value as Entry['recurrence'],
-                          })
-                        }
-                      >
-                        <option value="weekly">Every week</option>
-                        <option value="once">One-time class</option>
-                      </select>
-                    </Field>
-                    {e.recurrence === 'weekly' ? (
-                      <Field label="Day">
-                        <select
-                          value={e.day_of_week}
+                  <details
+                    className="entry-editor"
+                    data-review={!!e.needs_review}
+                    open={
+                      !collapsed.includes(e.id) &&
+                      (!e.source_text || e.needs_review)
+                    }
+                  >
+                    <summary
+                      onClick={(event) => {
+                        if (
+                          !event.currentTarget.parentElement?.hasAttribute(
+                            'open',
+                          )
+                        )
+                          savedEntries.current.set(e.id, { ...e });
+                      }}
+                    >
+                      <span className="entry-day">
+                        {e.recurrence === 'once'
+                          ? e.on_date || 'Once'
+                          : DAYS[e.day_of_week].slice(0, 3)}
+                      </span>
+                      <span>
+                        <strong>{e.subject_name || 'New class'}</strong>
+                        <small>
+                          {e.start_time}–{e.end_time} · {e.session_type}
+                          {!e.is_active ? ' · Inactive' : ''}
+                        </small>
+                      </span>
+                      {e.needs_review ? (
+                        <span className="review-tag">Review</span>
+                      ) : e.source_text ? (
+                        <span className="count-pill">✓ Read</span>
+                      ) : null}
+                    </summary>
+                    <div className="entry-fields">
+                      {e.source_text && (
+                        <details>
+                          <summary>Text from this timetable cell</summary>
+                          <pre className="ocr-text">{e.source_text}</pre>
+                        </details>
+                      )}
+                      {e.review_reason && (
+                        <div className="notice">
+                          <p>{e.review_reason}</p>
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              patchEntry(e.id, {
+                                review_reason: '',
+                                needs_review: false,
+                              })
+                            }
+                          >
+                            I have checked and resolved this row
+                          </button>
+                        </div>
+                      )}
+                      <Field label={`Subject ${i + 1}`}>
+                        <input
+                          value={e.subject_name}
                           onChange={(event) =>
                             patchEntry(e.id, {
-                              day_of_week: Number(event.target.value),
+                              subject_name: event.target.value,
                             })
                           }
-                        >
-                          {DAYS.map((day, i) => (
-                            <option key={day} value={i}>
-                              {day}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    ) : (
-                      <Field label="Date">
-                        <input
-                          type="date"
-                          min={draft.academic_start_date}
-                          max={draft.academic_end_date}
-                          value={e.on_date}
-                          onChange={(event) =>
-                            patchEntry(e.id, { on_date: event.target.value })
-                          }
+                          maxLength={100}
+                          placeholder="Subject name"
                         />
                       </Field>
-                    )}
-                  </div>
-                  {e.recurrence === 'weekly' && (
-                    <Field label="Weeks of the month">
-                      <select
-                        value={(e.month_weeks || []).join(',')}
-                        onChange={(event) =>
-                          patchEntry(e.id, {
-                            month_weeks: event.target.value
-                              ? event.target.value.split(',').map(Number)
-                              : [],
-                          })
-                        }
-                      >
-                        <option value="">Every occurrence</option>
-                        <option value="1,3,5">1st, 3rd and 5th</option>
-                        <option value="2,4">2nd and 4th</option>
-                      </select>
-                    </Field>
-                  )}
-                  <div className="form-grid">
-                    <Field label="Start time">
-                      <input
-                        type="time"
-                        value={e.start_time}
-                        onChange={(event) =>
-                          patchEntry(e.id, { start_time: event.target.value })
-                        }
-                      />
-                    </Field>
-                    <Field label="End time">
-                      <input
-                        type="time"
-                        value={e.end_time}
-                        onChange={(event) =>
-                          patchEntry(e.id, { end_time: event.target.value })
-                        }
-                      />
-                    </Field>
-                  </div>
-                  <div className="form-grid">
-                    <Field label="Session type">
-                      <select
-                        value={e.session_type}
-                        onChange={(event) =>
-                          patchEntry(e.id, {
-                            session_type: event.target
-                              .value as Entry['session_type'],
-                          })
-                        }
-                      >
-                        {SESSION_TYPES.map((t) => (
-                          <option key={t}>{t}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Subject code">
-                      <input
-                        value={e.subject_code}
-                        maxLength={30}
-                        onChange={(event) =>
-                          patchEntry(e.id, { subject_code: event.target.value })
-                        }
-                      />
-                    </Field>
-                    <Field label="Batch">
-                      <input
-                        value={e.batch}
-                        maxLength={60}
-                        onChange={(event) =>
-                          patchEntry(e.id, { batch: event.target.value })
-                        }
-                      />
-                    </Field>
-                    <Field label="Group">
-                      <input
-                        value={e.group_name}
-                        maxLength={60}
-                        onChange={(event) =>
-                          patchEntry(e.id, { group_name: event.target.value })
-                        }
-                      />
-                    </Field>
-                  </div>
-                  <label className="check-label">
-                    <input
-                      type="checkbox"
-                      checked={e.is_active}
-                      onChange={(event) =>
-                        patchEntry(e.id, { is_active: event.target.checked })
-                      }
-                    />
-                    Include in timetable
-                  </label>
-                  <div className="button-row">
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        setReviewed(false);
-                        setDraft((d) => ({
-                          ...d,
-                          entries: [
-                            ...d.entries,
-                            { ...e, id: crypto.randomUUID() },
-                          ],
-                        }));
-                      }}
-                    >
-                      <Copy size={16} />
-                      Duplicate
-                    </button>
-                    <button
-                      className="text-button danger-text"
-                      onClick={() => {
-                        setReviewed(false);
-                        setDraft((d) => ({
-                          ...d,
-                          entries: d.entries.filter((x) => x.id !== e.id),
-                        }));
-                      }}
-                    >
-                      <Trash2 size={16} />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </details>
-            ))}
+                      <div className="form-grid">
+                        <Field label="Recurrence">
+                          <select
+                            value={e.recurrence}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                recurrence: event.target
+                                  .value as Entry['recurrence'],
+                              })
+                            }
+                          >
+                            <option value="weekly">Every week</option>
+                            <option value="once">One-time class</option>
+                          </select>
+                        </Field>
+                        {e.recurrence === 'weekly' ? (
+                          <Field label="Day">
+                            <select
+                              value={e.day_of_week}
+                              onChange={(event) =>
+                                patchEntry(e.id, {
+                                  day_of_week: Number(event.target.value),
+                                })
+                              }
+                            >
+                              {DAYS.map((day, i) => (
+                                <option key={day} value={i}>
+                                  {day}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        ) : (
+                          <Field label="Date">
+                            <input
+                              type="date"
+                              min={draft.academic_start_date}
+                              max={draft.academic_end_date}
+                              value={e.on_date}
+                              onChange={(event) =>
+                                patchEntry(e.id, {
+                                  on_date: event.target.value,
+                                })
+                              }
+                            />
+                          </Field>
+                        )}
+                      </div>
+                      {e.recurrence === 'weekly' && (
+                        <Field label="Weeks of the month">
+                          <select
+                            value={(e.month_weeks || []).join(',')}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                month_weeks: event.target.value
+                                  ? event.target.value.split(',').map(Number)
+                                  : [],
+                              })
+                            }
+                          >
+                            <option value="">Every occurrence</option>
+                            <option value="1,3,5">1st, 3rd and 5th</option>
+                            <option value="2,4">2nd and 4th</option>
+                          </select>
+                        </Field>
+                      )}
+                      <div className="form-grid">
+                        <Field label="Start time">
+                          <input
+                            type="time"
+                            value={e.start_time}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                start_time: event.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="End time">
+                          <input
+                            type="time"
+                            value={e.end_time}
+                            onChange={(event) =>
+                              patchEntry(e.id, { end_time: event.target.value })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <div className="form-grid">
+                        <Field label="Session type">
+                          <select
+                            value={e.session_type}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                session_type: event.target
+                                  .value as Entry['session_type'],
+                              })
+                            }
+                          >
+                            {SESSION_TYPES.map((t) => (
+                              <option key={t}>{t}</option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Subject code">
+                          <input
+                            value={e.subject_code}
+                            maxLength={30}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                subject_code: event.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field label="Batch">
+                          <input
+                            value={e.batch}
+                            maxLength={60}
+                            onChange={(event) =>
+                              patchEntry(e.id, { batch: event.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field label="Group">
+                          <input
+                            value={e.group_name}
+                            maxLength={60}
+                            onChange={(event) =>
+                              patchEntry(e.id, {
+                                group_name: event.target.value,
+                              })
+                            }
+                          />
+                        </Field>
+                      </div>
+                      <label className="check-label">
+                        <input
+                          type="checkbox"
+                          checked={e.is_active}
+                          onChange={(event) =>
+                            patchEntry(e.id, {
+                              is_active: event.target.checked,
+                            })
+                          }
+                        />
+                        Include in timetable
+                      </label>
+                      <div className="button-row">
+                        <button
+                          className="button secondary"
+                          onClick={(event) => {
+                            savedEntries.current.set(e.id, { ...e });
+                            const details =
+                              event.currentTarget.closest('details');
+                            if (details) details.open = false;
+                            setCollapsed((v) => [...v, e.id]);
+                            notify(
+                              'Class saved in draft. Confirm the timetable to activate it.',
+                            );
+                          }}
+                        >
+                          Save class
+                        </button>
+                        <button
+                          className="text-button"
+                          onClick={(event) => {
+                            const saved = savedEntries.current.get(e.id);
+                            const details =
+                              event.currentTarget.closest('details');
+                            if (details) details.open = false;
+                            if (saved) patchEntry(e.id, saved);
+                            else
+                              setDraft((d) => ({
+                                ...d,
+                                entries: d.entries.filter(
+                                  (row) => row.id !== e.id,
+                                ),
+                              }));
+                            setCollapsed((v) => [...v, e.id]);
+                          }}
+                        >
+                          Cancel edit
+                        </button>
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setReviewed(false);
+                            setDraft((d) => ({
+                              ...d,
+                              entries: [
+                                ...d.entries,
+                                { ...e, id: crypto.randomUUID() },
+                              ],
+                            }));
+                          }}
+                        >
+                          <Copy size={16} />
+                          Duplicate
+                        </button>
+                        <button
+                          className="text-button danger-text"
+                          onClick={() => {
+                            setDeleting(e.id);
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </details>
+                </Fragment>
+              );
+            })}
           </div>
           <button
             className="button dashed wide"
@@ -769,6 +889,45 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
           </div>
         </section>
       </div>
+      {deleting && (
+        <Modal
+          title={
+            deleting === 'image' ? 'Remove this image?' : 'Delete this class?'
+          }
+          onClose={() => setDeleting('')}
+        >
+          <p>
+            {deleting === 'image'
+              ? 'The image will be removed from this draft. Your classes stay available.'
+              : 'This removes the class from your draft. Your active timetable changes only after confirmation.'}
+          </p>
+          <div className="button-row">
+            <button
+              className="button secondary"
+              onClick={() => setDeleting('')}
+            >
+              Keep it
+            </button>
+            <button
+              className="button danger"
+              disabled={busy}
+              onClick={() => {
+                if (deleting === 'image') void removeImage();
+                else {
+                  setReviewed(false);
+                  setDraft((d) => ({
+                    ...d,
+                    entries: d.entries.filter((e) => e.id !== deleting),
+                  }));
+                }
+                setDeleting('');
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }
