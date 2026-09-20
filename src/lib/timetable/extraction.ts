@@ -67,7 +67,12 @@ export const browserExtractor: TimetableExtractor = {
   async extract(image, progress) {
     progress(1);
     const { createWorker, PSM } = await import('tesseract.js');
-    const worker = await createWorker('eng', 1);
+    const worker = await createWorker('eng', 1, {
+      workerPath: '/ocr/worker.min.js',
+      corePath: '/ocr/core',
+      langPath:
+        'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int',
+    });
     try {
       const bitmap = await createImageBitmap(image),
         canvas = document.createElement('canvas');
