@@ -4,7 +4,8 @@
 
 - Release date: pending production deployment
 - Production URL: pending
-- Release commit: pending release commit (baseline `08d1d79`)
+- Release-preparation commit: `a88c4ce`
+- Production deployment commit: pending
 - Deployment result: blocked on Supabase and Vercel account configuration
 
 ## Implemented and automatically verified
