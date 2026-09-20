@@ -2,9 +2,11 @@
 
 A mobile-first personal attendance PWA. Each student supplies their own timetable and keeps their own attendance. There are no faculty roles, administrators, institution integrations or shared timetables.
 
+Production beta: [https://shabooya.vercel.app](https://shabooya.vercel.app)
+
 **Roll call, but smarter.** Shabooya includes a semantic light/dark design system, cumulative attendance charts, subject target bars, present/absent breakdown, planning calculator, mobile timeline, and grouped timetable review. See [the product and release notes](docs/SHABOOYA.md).
 
-**The application is implemented, but a live deployment requires your Supabase project, email sender and Vercel account.** Without public Supabase configuration, the app shows an honest setup state. It never substitutes sample data for your backend.
+**The application is deployed with Supabase and Vercel.** Real-student invitations remain paused until custom SMTP and the manual acceptance checks in the release checklist are complete. Without public Supabase configuration, local builds show an honest setup state and never substitute sample data for the backend.
 
 See the [feature checklist and student testing guide](docs/USER-TESTING.md) for completed functionality, remaining release work, a local disposable sandbox and a step-by-step acceptance test.
 

@@ -2,11 +2,12 @@
 
 ## Release identity
 
-- Release date: pending production deployment
-- Production URL: pending
+- Release date: 20 September 2026
+- Production URL: https://shabooya.vercel.app
 - Release-preparation commit: `a88c4ce`
-- Production deployment commit: pending
-- Deployment result: blocked on Supabase and Vercel account configuration
+- Initial production deployment commit: `1bfe1f3`
+- Final release-hardening commit: pending
+- Deployment result: HTTPS deployment verified; SMTP and human acceptance remain pending
 
 ## Implemented and automatically verified
 
@@ -19,20 +20,22 @@
 - [x] GitHub Actions runs install, typecheck, lint, format check, unit/database tests, production build, and browser tests on pushes and pull requests to `main`.
 - [x] No production secret is required by the application. Only the public Supabase project URL and publishable/anon key are used in browser code.
 
-## Production verification pending
+## Production verification
 
-- [ ] Create/link the production Supabase project and record its project reference without committing credentials.
-- [ ] Apply `202609180001_rollcall.sql` and `202609180002_ordinal_weekdays.sql`; verify remote migration state and expected objects.
-- [ ] Verify every user-owned table has RLS enabled and `timetable-images` remains private in the hosted project.
-- [ ] Configure Vercel Production and trusted Preview environments with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- [ ] Deploy `main` to the `shabooya` Vercel project and record the assigned HTTPS production URL.
-- [ ] Set Supabase Site URL and exact root plus `/reset-password` redirect URLs for production, trusted previews, and localhost.
+- [x] Linked production Supabase project `romybawgmmcyzoduebek` without committing credentials.
+- [x] Applied `202609180001_rollcall.sql` and `202609180002_ordinal_weekdays.sql`; remote migration ledger, seven application tables, and expected indexes verified.
+- [x] Verified hosted anonymous reads return no rows, anonymous profile/RPC writes are denied, and public timetable-image access is denied. Migration tests cover every RLS policy and private-image ownership rule.
+- [x] Disabled the exposed legacy `service_role` key and verified it returns HTTP 401; production uses the modern publishable key.
+- [x] Configured Vercel Production, Preview, and Development with only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- [x] Deployed `main` to the `shabooya` Vercel project with Next.js, Node 22.x, `npm ci`, and `npm run build`.
+- [x] Set Supabase Site URL and root plus `/reset-password` redirect URLs for production, scoped Vercel previews, and localhost. Enforced a 10-character password minimum.
+- [x] Verified live `/`, `/reset-password`, manifest, service worker, security headers, and the signed-out production UI over HTTPS.
 - [ ] Test the local application against real Supabase Auth, PostgreSQL, and private Storage rather than `tests/server.mjs`.
 - [ ] Configure verified custom SMTP with sender display name `Shabooya`.
 - [ ] Verify signup confirmation and password recovery with a non-team email address.
 - [ ] Perform the live two-account checks in [SECURITY.md](SECURITY.md), including direct API/RPC and signed-image denial.
 - [ ] Upload a genuine timetable photograph and verify owner access, other-user denial, removal, OCR review, and manual correction.
-- [ ] Review free-tier quotas and project inactivity behavior before inviting students.
+- [x] Reviewed free-tier quotas and project inactivity behavior. Supabase Free can pause after low activity; Vercel Hobby is limited to personal, non-commercial use.
 
 ## Physical device acceptance
 

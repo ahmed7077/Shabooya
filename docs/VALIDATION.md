@@ -7,7 +7,7 @@ Validated on Windows with Node.js 22.17.1; Shabooya product pass checked on 20 S
 | `npm run typecheck`    | Passed, strict TypeScript                                     |
 | `npm run lint`         | Passed, no warnings                                           |
 | `npm run format:check` | Passed                                                        |
-| `npm test`             | 68 tests passed across 6 files                                |
+| `npm test`             | 77 tests passed across 7 files                                |
 | `npm run build`        | Passed, production Next.js build and generated service worker |
 | `npm run test:e2e`     | 20 tests passed, mobile and desktop Chromium                  |
 | `npm audit`            | No reported dependency vulnerabilities at the time checked    |
@@ -28,8 +28,8 @@ The extraction update adds pixel-grid/blank-cell tests, merged-period and batch 
 
 Tests run the actual production migration in PostgreSQL (PGlite), including RLS, composite ownership constraints, security-invoker views and RPCs. Independent identities verify cross-user read/write isolation and private storage metadata policies. Tests also check future/cancelled attendance, idempotent writes, conflicts, rescheduling, holidays, replacement rollback on overlap, historical preservation and actual Auth-row deletion after image cleanup.
 
-## Checks still required on hosted services and physical devices
+## Hosted verification and remaining checks
 
-No live Supabase project credentials or Vercel project were supplied. Auth email delivery, hosted Storage behavior, live JWT verification, Vercel deployment and physical iPhone/Android installation have **not** been claimed as verified. The browser test adapter fixtures Auth responses and object bytes while executing the real relational database logic. Complete `RELEASE-CHECKLIST.md` after connecting your services.
+The production Supabase migrations, table/index inventory, anonymous RLS denials, private-bucket public denial, disabled legacy service key, Vercel environment scopes, HTTPS routes, manifest, service worker and security headers were verified on 20 September 2026. The browser test adapter still supplies Auth responses and object bytes while executing the real relational database logic.
 
-GitHub Actions repeats the quality checks on Linux. Consult the latest run for remote status.
+Custom SMTP, real signup/recovery email delivery, authenticated live Storage, the final live two-account privacy check and physical iPhone/Android installation remain human acceptance items. GitHub Actions repeats the quality checks on Linux; run `35495038959` passed for the initial production deployment commit.
