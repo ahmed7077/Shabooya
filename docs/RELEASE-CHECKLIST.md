@@ -33,7 +33,7 @@
 - [ ] Test the local application against real Supabase Auth, PostgreSQL, and private Storage rather than `tests/server.mjs`.
 - [x] Configured verified custom SMTP with sender display name `Shabooya`.
 - [x] Verified real signup confirmation delivery with a non-team email address on 20 September 2026.
-- [ ] Verify forgot-password delivery, reset link, password change, and subsequent login with a non-team email address.
+- [x] Verified forgot-password delivery, production reset link, password change, and subsequent login with a non-team email address on 20 September 2026.
 - [ ] Perform the live two-account checks in [SECURITY.md](SECURITY.md), including direct API/RPC and signed-image denial.
 - [ ] Upload a genuine timetable photograph and verify owner access, other-user denial, removal, OCR review, and manual correction.
 - [x] Reviewed free-tier quotas and project inactivity behavior. Supabase Free can pause after low activity; Vercel Hobby is limited to personal, non-commercial use.
