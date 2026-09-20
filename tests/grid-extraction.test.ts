@@ -133,9 +133,14 @@ describe('table-aware extraction', () => {
         e.end_time,
       ]),
     ).toEqual([
-      ['MIC', 'A', '15:00', '17:00'],
-      ['PH', 'B', '15:00', '17:00'],
-      ['PA', 'C', '15:00', '17:00'],
+      ['Microbiology', 'A', '15:00', '17:00'],
+      ['Pharmacology', 'B', '15:00', '17:00'],
+      ['Pathology', 'C', '15:00', '17:00'],
+    ]);
+    expect(result.entries.map((e) => e.subject_code)).toEqual([
+      'MIC',
+      'PH',
+      'PA',
     ]);
   });
   it('uses row-specific time headers and excludes breaks', () => {

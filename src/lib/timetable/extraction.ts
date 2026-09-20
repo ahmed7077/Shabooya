@@ -1,6 +1,7 @@
 import type { Entry } from '@/types/domain';
 import { detectGrid, hasCellText, type Raster, type Rect } from './grid';
 import { parseGrid, timeRanges, type RecognizedCell } from './grid-parser';
+import { normalizeSubject } from './subjects';
 export interface TimetableExtractionResult {
   entries: Entry[];
   rawText: string;
@@ -31,13 +32,13 @@ export function parseText(rawText: string): TimetableExtractionResult {
       /(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\s+(.+)/i,
     );
     if (!match || /\b(lunch|break)\b/i.test(match[4])) continue;
+    const subject = normalizeSubject(match[4].trim());
     entries.push({
       id: crypto.randomUUID(),
       day_of_week: weekdays.indexOf(match[1].toLowerCase()),
       start_time: match[2].padStart(5, '0'),
       end_time: match[3].padStart(5, '0'),
-      subject_name: match[4].trim(),
-      subject_code: '',
+      ...subject,
       session_type: 'Other',
       batch: '',
       group_name: '',

@@ -1,4 +1,5 @@
 import type { Entry } from '@/types/domain';
+import { normalizeSubject } from './subjects';
 import type { Rect } from './grid';
 export interface RecognizedCell extends Rect {
   text: string;
@@ -97,9 +98,9 @@ function details(raw: string) {
     subject_name = text.match(/^([A-Z]+?)(?:\s*-?\s*L\s*-)/)?.[1] || text;
     session_type = 'Other';
   }
+  const subject = normalizeSubject(subject_name || text, code || '');
   return {
-    subject_name: subject_name || text,
-    subject_code: code || '',
+    ...subject,
     session_type,
     batch,
   };
