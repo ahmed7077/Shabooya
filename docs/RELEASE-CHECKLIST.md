@@ -6,7 +6,7 @@
 - Production URL: https://shabooya.vercel.app
 - Release-preparation commit: `a88c4ce`
 - Initial production deployment commit: `1bfe1f3`
-- Final release-hardening commit: pending
+- Release-hardening implementation commit: `00efdb6`
 - Deployment result: HTTPS deployment verified; SMTP and human acceptance remain pending
 
 ## Implemented and automatically verified
