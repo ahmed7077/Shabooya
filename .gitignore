@@ -16,5 +16,6 @@ public/sw.js
 supabase/.temp/
 
 .vercel
+/SMTP key- Shabooya.txt
 
 .env*

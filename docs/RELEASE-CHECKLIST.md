@@ -7,7 +7,7 @@
 - Release-preparation commit: `a88c4ce`
 - Initial production deployment commit: `1bfe1f3`
 - Release-hardening implementation commit: `00efdb6`
-- Deployment result: HTTPS deployment verified; SMTP and human acceptance remain pending
+- Deployment result: HTTPS and real confirmation email verified; remaining human acceptance is listed below
 
 ## Implemented and automatically verified
 
@@ -31,8 +31,9 @@
 - [x] Set Supabase Site URL and root plus `/reset-password` redirect URLs for production, scoped Vercel previews, and localhost. Enforced a 10-character password minimum.
 - [x] Verified live `/`, `/reset-password`, manifest, service worker, security headers, and the signed-out production UI over HTTPS.
 - [ ] Test the local application against real Supabase Auth, PostgreSQL, and private Storage rather than `tests/server.mjs`.
-- [ ] Configure verified custom SMTP with sender display name `Shabooya`.
-- [ ] Verify signup confirmation and password recovery with a non-team email address.
+- [x] Configured verified custom SMTP with sender display name `Shabooya`.
+- [x] Verified real signup confirmation delivery with a non-team email address on 20 September 2026.
+- [ ] Verify forgot-password delivery, reset link, password change, and subsequent login with a non-team email address.
 - [ ] Perform the live two-account checks in [SECURITY.md](SECURITY.md), including direct API/RPC and signed-image denial.
 - [ ] Upload a genuine timetable photograph and verify owner access, other-user denial, removal, OCR review, and manual correction.
 - [x] Reviewed free-tier quotas and project inactivity behavior. Supabase Free can pause after low activity; Vercel Hobby is limited to personal, non-commercial use.

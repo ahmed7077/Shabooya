@@ -32,4 +32,4 @@ Tests run the actual production migration in PostgreSQL (PGlite), including RLS,
 
 The production Supabase migrations, table/index inventory, anonymous RLS denials, private-bucket public denial, disabled legacy service key, Vercel environment scopes, HTTPS routes, manifest, service worker and security headers were verified on 20 September 2026. The browser test adapter still supplies Auth responses and object bytes while executing the real relational database logic.
 
-Custom SMTP, real signup/recovery email delivery, authenticated live Storage, the final live two-account privacy check and physical iPhone/Android installation remain human acceptance items. GitHub Actions repeats the quality checks on Linux; run `35495038959` passed for the initial production deployment commit.
+Custom SMTP and a real signup confirmation email were verified on 20 September 2026. Real password recovery, authenticated live Storage, the final live two-account privacy check and physical iPhone/Android installation remain human acceptance items. GitHub Actions repeats the quality checks on Linux; run `35510970960` passed for the final production record.
