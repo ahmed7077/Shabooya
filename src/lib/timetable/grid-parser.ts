@@ -11,6 +11,7 @@ export function timeRanges(text: string): { start: string; end: string }[] {
     .toLowerCase()
     .replace(/[–—~]/g, '-')
     .replace(/-\s*-/g, '-')
+    .replace(/((?:\d{1,2}[.:]\d{2}|\d{3,4})\s*-\s*\d{1,2})-(\d{2})/g, '$1.$2')
     .replace(/(?<=\d)[il](?=am|pm)/g, '1')
     .replace(/\b[il](?=\d\s*(?:am|pm))/g, '1');
   const token =
@@ -35,7 +36,16 @@ export function timeRanges(text: string): { start: string; end: string }[] {
       : '';
   }
   return matches
-    .map((m) => ({ start: clock(m[1]), end: clock(m[2]) }))
+    .map((m) => {
+      const start = clock(m[1]);
+      let end = clock(m[2]);
+      if (start && end && end <= start && !/[ap]m/i.test(m[0])) {
+        const [hour, minute] = end.split(':').map(Number);
+        if (Number(start.slice(0, 2)) >= 11 && hour <= 6)
+          end = `${String(hour + 12).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      }
+      return { start, end };
+    })
     .filter((t) => t.start && t.end && t.end > t.start);
 }
 export function academicDates(text: string) {
@@ -70,7 +80,10 @@ function details(raw: string) {
   const type = text.match(/DOAP|SGT|SDL|AETCOM|FAP/i)?.[0].toUpperCase();
   const code = text.match(/\b[A-Z]{2,}\d{3,}(?:_[A-Z]+)?\b/)?.[0];
   const batch =
-    text.match(/\bB\d+\b/)?.[0] ||
+    text
+      .match(/\bB[1Il2-9]\b/i)?.[0]
+      .replace(/[Il]/i, '1')
+      .toUpperCase() ||
     text.match(/DOAP\s*-?\s*[A-Z]+\s*-\s*([A-Z])\b/)?.[1] ||
     '';
   let session_type: Entry['session_type'] =
@@ -79,9 +92,9 @@ function details(raw: string) {
       ? 'Clinical'
       : /sports|yoga/i.test(text)
         ? 'Sports/Activity'
-        : /_P\b/.test(code || '')
+        : /\blab\b/i.test(text) || /_P\b/.test(code || '')
           ? 'Practical'
-          : /(?:\s|-|[A-Z])L(?:\s|-|$)/.test(text)
+          : /(?:^|\s|-)L(?:\s|-|$)/.test(text)
             ? 'Lecture'
             : 'Other');
   // Keep institution-specific abbreviations verbatim; never expand a code by guessing.
@@ -91,14 +104,17 @@ function details(raw: string) {
       ? text.replace(/^DOAP\s*-?\s*/, '').replace(/\s*-\s*[A-Z]$/, '')
       : text
           .replace(/\s*-?\s*(?:SGT|SDL|AETCOM|DOAP)\b[\s\S]*$/i, '')
-          .replace(/\s*-?\s*L(?:\s*-\s*\d+)?$/, '')
+          .replace(/(?:\s+|-\s*)L(?:\s*-\s*\d+)?$/, '')
           .replace(/\s*-\s*\d+$/, '')
     ).trim();
   if (/\/\s*(SDL|SGT)/.test(text)) {
     subject_name = text.match(/^([A-Z]+?)(?:\s*-?\s*L\s*-)/)?.[1] || text;
     session_type = 'Other';
   }
-  const subject = normalizeSubject(subject_name || text, code || '');
+  const labName = text.match(/^(.+?)\s+LAB\b/i)?.[1].trim();
+  if (labName) subject_name = labName;
+  const abbreviation = subject_name.match(/^[A-Z]{2,10}$/)?.[0] || '';
+  const subject = normalizeSubject(subject_name || text, code || abbreviation);
   return {
     ...subject,
     session_type,
@@ -127,7 +143,16 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
       ...academicDates(rawText),
     };
   const firstDayY = dayCells[0].y;
-  const headers = cells
+  const lastDay = dayCells.at(-1)!;
+  const rowGaps = dayCells
+    .slice(1)
+    .map((cell, index) => cell.y - dayCells[index].y)
+    .filter((gap) => gap > 5)
+    .sort((a, b) => a - b);
+  const rowPitch = rowGaps[Math.floor(rowGaps.length / 2)] || lastDay.height;
+  const scheduleBottom = lastDay.y + Math.max(lastDay.height, rowPitch);
+  const scheduleCells = cells.filter((cell) => cell.y < scheduleBottom + 5);
+  const headers = scheduleCells
     .filter(
       (c) =>
         c.y < firstDayY && c.x > dayCells[0].x && timeRanges(c.text).length,
@@ -140,8 +165,23 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
         x: c.x + (c.width * i) / ranges.length,
         width: c.width / ranges.length,
       }));
-    });
-  for (const cell of cells) {
+    })
+    .sort((a, b) => a.x - b.x);
+  let previousStart = '';
+  for (const header of headers) {
+    if (previousStart && header.start <= previousStart) {
+      const shift = (value: string) => {
+        const [hour, minute] = value.split(':').map(Number);
+        return hour < 12
+          ? `${String(hour + 12).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+          : value;
+      };
+      header.start = shift(header.start);
+      header.end = shift(header.end);
+    }
+    previousStart = header.start;
+  }
+  for (const cell of scheduleCells) {
     if (
       !cell.text.trim() ||
       cell.y < firstDayY ||
@@ -152,7 +192,7 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
       continue;
     const day = dayCells.filter((d) => d.y <= cell.y + 5).at(-1);
     if (!day) continue;
-    const local = cells.filter(
+    const local = scheduleCells.filter(
       (c) =>
         c.y >= day.y &&
         c.y < cell.y &&
@@ -163,10 +203,19 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
     const spans = (
       local.length
         ? local.flatMap((c) => timeRanges(c.text).map((t) => ({ ...c, ...t })))
-        : headers.filter(
-            (h) =>
-              h.x >= cell.x - 8 && h.x + h.width <= cell.x + cell.width + 8,
-          )
+        : headers.filter((h) => {
+            const headerCenter = h.x + h.width / 2;
+            const cellCenter = cell.x + cell.width / 2;
+            const overlap =
+              Math.min(h.x + h.width, cell.x + cell.width) -
+              Math.max(h.x, cell.x);
+            return (
+              (headerCenter >= cell.x - 8 &&
+                headerCenter <= cell.x + cell.width + 8) ||
+              (cellCenter >= h.x - 8 && cellCenter <= h.x + h.width + 8) ||
+              overlap >= Math.min(h.width, cell.width) * 0.4
+            );
+          })
     ).sort((a, b) => a.x - b.x);
     if (!spans.length) {
       warnings.push(
@@ -178,17 +227,41 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
       .split(/\n+/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const alternatives = lines.filter((s) => /DOAP/i.test(s));
-    const values = alternatives.length > 1 ? alternatives : [cell.text];
+    const meaningful = (value: string) =>
+      (value.match(/[a-z]/gi)?.length || 0) >= 2 &&
+      !/^(?:days?|subject(?:\s+code)?|faculty(?:\s+initials?)?|room|class|session)$/i.test(
+        value.trim().replace(/\s+/g, ' '),
+      ) &&
+      !/^laboratory\s*\/\s*tutorial.*project/i.test(value.trim());
+    if (!meaningful(cell.text)) continue;
+    const doap = lines.filter((s) => /DOAP/i.test(s));
+    const labGroups = cell.text
+      .split(/\s*\/\s*/)
+      .map((value) => value.trim())
+      .filter((value) => /\bB[1Il2-9]\b/i.test(value));
+    const lineSubjects = lines.filter(meaningful);
+    const splitAcrossPeriods =
+      lineSubjects.length === spans.length &&
+      lineSubjects.length > 1 &&
+      lineSubjects.every((line) => line.length <= 24) &&
+      !/\b(?:room|faculty)\b|\bB[1Il2-9]\b|\b[A-Z]{2,}\d{3,}/i.test(cell.text);
+    const values =
+      doap.length > 1
+        ? doap
+        : labGroups.length > 1
+          ? labGroups
+          : splitAcrossPeriods
+            ? lineSubjects
+            : [cell.text];
     const weeks =
       day.day === 6 && /\b1[^\n]*3[^\n]*5/.test(day.text)
         ? [1, 3, 5]
         : day.day === 6 && /\b2[^\n]*4/.test(day.text)
           ? [2, 4]
           : [];
-    for (const value of values) {
+    for (const [valueIndex, value] of values.entries()) {
       const parsed = details(value);
-      const siblings = cells.filter(
+      const siblings = scheduleCells.filter(
         (c) =>
           c !== cell &&
           c.x === cell.x &&
@@ -212,8 +285,14 @@ export function parseGrid(cells: RecognizedCell[], rawText: string) {
       entries.push({
         id: crypto.randomUUID(),
         day_of_week: day.day,
-        start_time: spans[0].start,
-        end_time: spans.at(-1)!.end,
+        start_time:
+          values.length === spans.length && !doap.length && !labGroups.length
+            ? spans[valueIndex].start
+            : spans[0].start,
+        end_time:
+          values.length === spans.length && !doap.length && !labGroups.length
+            ? spans[valueIndex].end
+            : spans.at(-1)!.end,
         ...parsed,
         group_name: '',
         recurrence: 'weekly',

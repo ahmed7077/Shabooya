@@ -6,7 +6,12 @@ import {
   type RecognizedCell,
 } from '@/lib/timetable/grid-parser';
 import { generateSessions } from '@/lib/timetable/generator';
-import { detectGrid, hasCellText, type Raster } from '@/lib/timetable/grid';
+import {
+  detectGrid,
+  findScheduleBounds,
+  hasCellText,
+  type Raster,
+} from '@/lib/timetable/grid';
 import { entry, timetable, USER_A } from './fixtures';
 const cell = (
   x: number,
@@ -74,14 +79,100 @@ describe('table-aware extraction', () => {
   });
   it('reads 12-hour, 24-hour, compact and OCR-spaced time ranges', () => {
     expect(timeRanges('850-945')).toEqual([{ start: '08:50', end: '09:45' }]);
+    expect(timeRanges('9.30 -10-25')).toEqual([
+      { start: '09:30', end: '10:25' },
+    ]);
     expect(timeRanges('10am–1pm')).toEqual([{ start: '10:00', end: '13:00' }]);
     expect(timeRanges('1lam-1pm')).toEqual([{ start: '11:00', end: '13:00' }]);
     expect(timeRanges('3pm-4pm\n4pm ~-5pm')).toEqual([
       { start: '15:00', end: '16:00' },
       { start: '16:00', end: '17:00' },
     ]);
+    expect(timeRanges('12.30-1.25')).toEqual([
+      { start: '12:30', end: '13:25' },
+    ]);
     expect(timeRanges('25:00-26:00')).toEqual([]);
     expect(timeRanges('12:00-09:00')).toEqual([]);
+  });
+  it('isolates a weekly schedule above a separate subject legend', () => {
+    expect(
+      findScheduleBounds(
+        [
+          {
+            x: 300,
+            y: 80,
+            width: 180,
+            height: 15,
+            text: 'Effective from 24-08-2026',
+          },
+          { x: 20, y: 100, width: 60, height: 15, text: '9.30-10.25' },
+          { x: 5, y: 130, width: 60, height: 15, text: 'MONDAY' },
+          { x: 5, y: 170, width: 60, height: 15, text: 'TUESDAY' },
+          { x: 5, y: 210, width: 60, height: 15, text: 'WEDNESDAY' },
+          { x: 5, y: 250, width: 60, height: 15, text: 'THURSDAY' },
+          { x: 5, y: 290, width: 60, height: 15, text: 'FRIDAY' },
+          { x: 5, y: 330, width: 60, height: 15, text: 'SATURDAY' },
+          { x: 5, y: 440, width: 60, height: 15, text: 'SUBJECT' },
+        ],
+        800,
+        600,
+      ),
+    ).toMatchObject({ y: 80, height: 285 });
+  });
+
+  it('keeps subject legends below Saturday out and splits parallel lab batches', () => {
+    const result = parseGrid(
+      [
+        cell(100, 0, 100, 30, '9.30-10.25'),
+        cell(200, 0, 100, 30, '12.30-1.25'),
+        cell(300, 0, 200, 30, '2.15-3.10\n3.10-4.05\n4.05-5.00'),
+        cell(0, 30, 100, 40, 'MONDAY'),
+        cell(300, 30, 200, 40, 'EDC LAB - B1 / DE LAB B2'),
+        cell(0, 70, 100, 40, 'SATURDAY'),
+        cell(100, 70, 100, 40, 'PBL'),
+        cell(0, 160, 100, 30, 'SUBJECT'),
+        cell(100, 160, 200, 30, 'Computer Organization'),
+      ],
+      '',
+    );
+    expect(result.entries.map((entry) => entry.subject_name)).toEqual([
+      'EDC',
+      'DE',
+      'PBL',
+    ]);
+    expect(result.entries.slice(0, 2).map((entry) => entry.batch)).toEqual([
+      'B1',
+      'B2',
+    ]);
+    expect(result.entries[0]).toMatchObject({
+      start_time: '14:15',
+      end_time: '17:00',
+      session_type: 'Practical',
+    });
+  });
+  it('ignores punctuation artifacts and assigns line-separated subjects to matching periods', () => {
+    const result = parseGrid(
+      [
+        cell(100, 0, 100, 30, '9.30-10.25'),
+        cell(200, 0, 100, 30, '12.30-1.25'),
+        cell(300, 0, 100, 30, '2.15-3.10'),
+        cell(400, 0, 100, 30, '3.10-4.05'),
+        cell(0, 30, 100, 50, 'WEDNESDAY'),
+        cell(300, 30, 200, 50, 'EDC\nDE'),
+        cell(500, 30, 100, 50, ': :'),
+      ],
+      '',
+    );
+    expect(
+      result.entries.map((entry) => [
+        entry.subject_name,
+        entry.start_time,
+        entry.end_time,
+      ]),
+    ).toEqual([
+      ['EDC', '14:15', '15:10'],
+      ['DE', '15:10', '16:05'],
+    ]);
   });
   it('does not silently pick between two academic periods or accept invalid dates', () => {
     const dates = academicDates(

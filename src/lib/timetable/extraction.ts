@@ -1,5 +1,12 @@
 import type { Entry } from '@/types/domain';
-import { detectGrid, hasCellText, type Raster, type Rect } from './grid';
+import {
+  detectGrid,
+  findScheduleBounds,
+  hasCellText,
+  type Raster,
+  type Rect,
+  type TextRegion,
+} from './grid';
 import { parseGrid, timeRanges, type RecognizedCell } from './grid-parser';
 import { normalizeSubject } from './subjects';
 export interface TimetableExtractionResult {
@@ -82,15 +89,31 @@ export const browserExtractor: TimetableExtractor = {
       const context = canvas.getContext('2d', { willReadFrequently: true })!;
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       bitmap.close();
-      const grid = detectGrid(
-        context.getImageData(0, 0, canvas.width, canvas.height),
-      );
       await worker.setParameters({
         tessedit_pageseg_mode: PSM.SPARSE_TEXT,
         user_defined_dpi: '300',
       });
-      const whole = await worker.recognize(canvas);
+      const whole = await worker.recognize(
+        canvas,
+        {},
+        { text: true, blocks: true },
+      );
       progress(12);
+      const regions = (whole.data.blocks || []).flatMap((block) =>
+        block.paragraphs.flatMap((paragraph) =>
+          paragraph.lines.map((line): TextRegion => ({
+            text: line.text.trim(),
+            x: line.bbox.x0,
+            y: line.bbox.y0,
+            width: line.bbox.x1 - line.bbox.x0,
+            height: line.bbox.y1 - line.bbox.y0,
+          })),
+        ),
+      );
+      const bounds = findScheduleBounds(regions, canvas.width, canvas.height);
+      const grid = detectGrid(
+        context.getImageData(0, 0, canvas.width, canvas.height),
+      );
       if (!grid.cells.length) return parseText(whole.data.text);
       function crop(raster: Raster, rect: Rect, factor = 4) {
         const source = document.createElement('canvas');
@@ -129,7 +152,13 @@ export const browserExtractor: TimetableExtractor = {
       }
       const cells: RecognizedCell[] = [];
       const candidates = grid.cells
-        .filter((c) => c.height < c.width * 4)
+        .filter(
+          (c) =>
+            c.height < c.width * 4 &&
+            (!bounds ||
+              (c.y + c.height / 2 >= bounds.y &&
+                c.y + c.height / 2 <= bounds.y + bounds.height)),
+        )
         .slice(0, 160);
       for (const [i, cell] of candidates.entries()) {
         const margin = cell.y <= (grid.ys?.[1] ?? 0) ? 4 : 5;
@@ -211,6 +240,45 @@ export const browserExtractor: TimetableExtractor = {
           confidence: codeWord?.confidence ?? result.data.confidence,
         });
         progress(12 + Math.round(((i + 1) / candidates.length) * 86));
+      }
+      // The broad pass often sees short subject codes that a cell crop misses.
+      // Add only schedule lines not already represented by a recognized cell.
+      const offsetX = 0;
+      const offsetY = 0;
+      for (const region of regions) {
+        const centerX = region.x + region.width / 2;
+        const centerY = region.y + region.height / 2;
+        if (
+          bounds &&
+          (centerX < bounds.x ||
+            centerX > bounds.x + bounds.width ||
+            centerY < bounds.y ||
+            centerY > bounds.y + bounds.height)
+        )
+          continue;
+        const x = region.x - offsetX;
+        const y = region.y - offsetY;
+        const regionHasTime = timeRanges(region.text).length > 0;
+        if (
+          !region.text.trim() ||
+          cells.some(
+            (cell) =>
+              x + region.width / 2 >= cell.x &&
+              x + region.width / 2 <= cell.x + cell.width &&
+              y + region.height / 2 >= cell.y &&
+              y + region.height / 2 <= cell.y + cell.height &&
+              (!regionHasTime || timeRanges(cell.text).length > 0),
+          )
+        )
+          continue;
+        cells.push({
+          x,
+          y,
+          width: region.width,
+          height: region.height,
+          text: region.text.trim(),
+          confidence: 70,
+        });
       }
       const parsed = parseGrid(
         cells,
