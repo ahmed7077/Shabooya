@@ -10,6 +10,70 @@ export interface Raster {
   height: number;
   data: Uint8ClampedArray;
 }
+export interface TextRegion extends Rect {
+  text: string;
+}
+
+/** Locate the weekly grid when a page also contains legends or faculty tables. */
+export function findScheduleBounds(
+  regions: TextRegion[],
+  width: number,
+  height: number,
+): Rect | null {
+  const day =
+    /^(?:mon|tue|wed|thu|fri|sat|sun)(?:day|sday|nesday|rsday|urday)?$/i;
+  const dayRegions = regions
+    .filter((region) => day.test(region.text.replace(/[^a-z]/gi, '')))
+    .sort((a, b) => a.y - b.y);
+  if (dayRegions.length < 2) return null;
+
+  const centers = dayRegions.map((region) => region.y + region.height / 2);
+  const gaps = centers
+    .slice(1)
+    .map((center, index) => center - centers[index])
+    .filter((gap) => gap > 5)
+    .sort((a, b) => a - b);
+  const rowPitch = gaps[Math.floor(gaps.length / 2)] || height * 0.08;
+  const first = dayRegions[0];
+  const timeRegions = regions.filter(
+    (region) =>
+      region.y < first.y &&
+      region.y > first.y - Math.max(rowPitch * 1.8, height * 0.14) &&
+      /^\s*(?:\d{3,4}|\d{1,2}[.:]\d{2}|\d{1,2}\s*[ap]m)\s*[-–—]\s*(?:\d{3,4}|\d{1,2}[.:]\d{2}|\d{1,2}\s*[ap]m)\s*$/i.test(
+        region.text,
+      ),
+  );
+  const top = Math.max(
+    0,
+    Math.min(
+      ...(timeRegions.length
+        ? timeRegions.map((region) => region.y)
+        : [first.y - rowPitch]),
+    ) - 20,
+  );
+  const last = dayRegions.at(-1)!;
+  const nextTable = regions
+    .filter(
+      (region) =>
+        region.y > last.y + last.height &&
+        /^(?:subject|faculty|laboratory|tutorial|course\s*code)/i.test(
+          region.text.trim(),
+        ),
+    )
+    .sort((a, b) => a.y - b.y)[0];
+  const bottom = Math.min(
+    height,
+    nextTable?.y ? nextTable.y - 6 : height,
+    last.y + last.height + Math.max(rowPitch * 0.35, 10),
+  );
+  if (bottom - top < height * 0.2) return null;
+  return {
+    x: 0,
+    y: top,
+    width,
+    height: Math.min(height, bottom + 6) - top,
+  };
+}
 /** Reject empty cells and long rule fragments before OCR can hallucinate text. */
 export function hasCellText(raster: Raster, rect: Rect) {
   const w = Math.floor(rect.width),
