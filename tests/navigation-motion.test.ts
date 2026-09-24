@@ -4,7 +4,10 @@ import {
   clampTilt,
   daySwipeDelta,
   navigationDirection,
+  orientationParallax,
+  pointerParallax,
   primaryTabFor,
+  smoothParallax,
   swipeAction,
   swipeIntent,
 } from '@/lib/navigation-motion';
@@ -62,6 +65,21 @@ describe('progressive enhancements', () => {
     expect(clampTilt(30, 7)).toBe(7);
     expect(clampTilt(-30, 7)).toBe(-7);
     expect(clampTilt(3, 7)).toBe(3);
+  });
+
+  it('filters sensor noise and clamps stronger orientation parallax', () => {
+    expect(orientationParallax(0.2, 0.4)).toEqual({ x: 0, y: 0 });
+    expect(orientationParallax(90, -90)).toEqual({ x: -18, y: 18 });
+  });
+
+  it('moves desktop backgrounds opposite the pointer', () => {
+    expect(pointerParallax(500, 400, 1000, 800).x).toBeCloseTo(0);
+    expect(pointerParallax(500, 400, 1000, 800).y).toBeCloseTo(0);
+    expect(pointerParallax(1000, 0, 1000, 800)).toEqual({ x: -18, y: 18 });
+  });
+
+  it('interpolates rather than snapping to the parallax target', () => {
+    expect(smoothParallax(0, 18, 0.1)).toBeCloseTo(1.8);
   });
 
   it('does not throw when vibration is unavailable', () => {

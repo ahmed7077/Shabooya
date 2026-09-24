@@ -35,6 +35,46 @@ export function clampTilt(value: number, limit = 8) {
   return Math.max(-limit, Math.min(limit, value));
 }
 
+export function pointerParallax(
+  clientX: number,
+  clientY: number,
+  width: number,
+  height: number,
+  limit = 18,
+) {
+  const x = (clientX / Math.max(1, width) - 0.5) * 2;
+  const y = (clientY / Math.max(1, height) - 0.5) * 2;
+  const offsetX = clampTilt(-x * limit, limit);
+  const offsetY = clampTilt(-y * limit, limit);
+  return {
+    x: Object.is(offsetX, -0) ? 0 : offsetX,
+    y: Object.is(offsetY, -0) ? 0 : offsetY,
+  };
+}
+
+export function orientationParallax(
+  gamma: number | null,
+  beta: number | null,
+  limit = 18,
+) {
+  const stableGamma = Math.abs(gamma || 0) < 0.6 ? 0 : gamma || 0;
+  const stableBeta = Math.abs(beta || 0) < 0.8 ? 0 : beta || 0;
+  const offsetX = clampTilt(stableGamma * -0.62, limit);
+  const offsetY = clampTilt(stableBeta * -0.36, limit);
+  return {
+    x: Object.is(offsetX, -0) ? 0 : offsetX,
+    y: Object.is(offsetY, -0) ? 0 : offsetY,
+  };
+}
+
+export function smoothParallax(
+  current: number,
+  target: number,
+  easing: number,
+) {
+  return current + (target - current) * easing;
+}
+
 export type SwipeIntent = 'horizontal' | 'vertical' | 'pending';
 
 export function swipeIntent(dx: number, dy: number): SwipeIntent {

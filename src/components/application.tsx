@@ -27,7 +27,7 @@ import {
   PRIMARY_TABS,
   type MotionDirection,
 } from '@/lib/navigation-motion';
-import { useDeviceTilt } from '@/hooks/use-device-tilt';
+import { useResponsiveParallax } from '@/hooks/use-device-tilt';
 
 const ICONS = {
   Home: House,
@@ -80,8 +80,8 @@ function Content() {
     [, tick] = useState(0);
   const activeTabRef = useRef(tab);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const backgroundsRef = useRef<HTMLDivElement>(null);
-  useDeviceTilt(backgroundsRef, Boolean(data?.profile));
+  const appRef = useRef<HTMLDivElement>(null);
+  useResponsiveParallax(appRef, Boolean(data?.profile));
   useEffect(() => {
     activeTabRef.current = tab;
   }, [tab]);
@@ -225,6 +225,7 @@ function Content() {
   const section = backgroundFor(active, editor);
   return (
     <div
+      ref={appRef}
       className="app-layout"
       data-section={section}
       data-motion-direction={motionDirection}
@@ -280,11 +281,7 @@ function Content() {
         </div>
       </aside>
       <div className="main-area">
-        <div
-          ref={backgroundsRef}
-          className="tab-backgrounds"
-          aria-hidden="true"
-        >
+        <div className="tab-backgrounds" aria-hidden="true">
           {BACKGROUNDS.map((name) => (
             <span
               key={name}

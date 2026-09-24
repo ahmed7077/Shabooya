@@ -86,18 +86,31 @@ input[type='checkbox'] {
   contain: strict;
   background: var(--background);
 }
+.tab-backgrounds::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--parallax-light-x, 50%) var(--parallax-light-y, 50%),
+    #ffffff0b 0,
+    transparent 46%
+  );
+}
 .tab-backdrop {
   position: absolute;
   inset: 0;
   opacity: 0;
-  background-position: calc(50% + var(--tilt-x, 0px))
-    calc(50% + var(--tilt-y, 0px));
+  background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
   filter: saturate(0.94) contrast(1.02);
   transform: translate3d(0, 100%, 0);
   transition: none;
   will-change: opacity, transform;
+  translate: var(--parallax-bg-x, 0) var(--parallax-bg-y, 0);
+  scale: 1.045;
 }
 .tab-backdrop::after {
   content: '';
@@ -1137,6 +1150,7 @@ progress::-moz-progress-bar {
 .subject-detail-card,
 .attendance-hero,
 .day-summary,
+.dashboard-grid > .day-summary,
 .empty,
 .calendar-panel,
 .update-banner,
@@ -1145,10 +1159,10 @@ progress::-moz-progress-bar {
 .bulk-actions,
 .projected-result,
 .main-stat {
-  background: color-mix(in srgb, var(--surface) 30%, transparent);
-  border-color: color-mix(in srgb, var(--border) 62%, transparent);
-  backdrop-filter: blur(20px) saturate(1.18);
-  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  background: #ffffff05;
+  border-color: #ffffff1c;
+  backdrop-filter: blur(9px) saturate(1.04);
+  -webkit-backdrop-filter: blur(9px) saturate(1.04);
   box-shadow:
     inset 0 1px 0 #ffffff10,
     0 16px 42px #00000018;
@@ -1167,15 +1181,17 @@ progress::-moz-progress-bar {
 .reminder,
 .attention-strip,
 .notice {
-  background: color-mix(in srgb, var(--warning-soft) 42%, transparent);
-  backdrop-filter: blur(18px) saturate(1.12);
-  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  background: #ffffff04;
+  border: 1px solid #ffffff1a;
+  backdrop-filter: blur(8px) saturate(1.03);
+  -webkit-backdrop-filter: blur(8px) saturate(1.03);
 }
 :root[data-theme='dark'] .panel,
 :root[data-theme='dark'] .session-card,
 :root[data-theme='dark'] .subject-detail-card,
 :root[data-theme='dark'] .attendance-hero,
 :root[data-theme='dark'] .day-summary,
+:root[data-theme='dark'] .dashboard-grid > .day-summary,
 :root[data-theme='dark'] .empty,
 :root[data-theme='dark'] .calendar-panel,
 :root[data-theme='dark'] .update-banner,
@@ -1184,8 +1200,8 @@ progress::-moz-progress-bar {
 :root[data-theme='dark'] .bulk-actions,
 :root[data-theme='dark'] .projected-result,
 :root[data-theme='dark'] .main-stat {
-  background: #11182166;
-  border-color: #ffffff1c;
+  background: #ffffff04;
+  border-color: #ffffff1a;
 }
 .secondary {
   box-shadow: 0 1px 2px #0000000a;
@@ -1220,6 +1236,18 @@ progress::-moz-progress-bar {
     background: #ffffff0a;
     color: #edf3ff;
     transform: translateX(2px);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 851px) {
+  .subject-detail-card:hover,
+  .reminder:hover,
+  .attention-strip:hover,
+  .install-card:hover {
+    translate: var(--parallax-card-x, 0) var(--parallax-card-y, 0);
+    transition:
+      translate 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms ease,
+      box-shadow 180ms ease;
   }
 }
 .skeleton {
@@ -1416,8 +1444,17 @@ progress::-moz-progress-bar {
     animation-duration: 120ms;
   }
   .tab-backgrounds {
-    --tilt-x: 0px !important;
-    --tilt-y: 0px !important;
+    --parallax-bg-x: 0px !important;
+    --parallax-bg-y: 0px !important;
+    --parallax-light-x: 50% !important;
+    --parallax-light-y: 50% !important;
+  }
+  .tab-backdrop,
+  .subject-detail-card,
+  .reminder,
+  .attention-strip,
+  .install-card {
+    translate: 0 0 !important;
   }
 }
 @keyframes reduced-fade {
