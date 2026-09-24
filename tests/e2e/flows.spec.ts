@@ -275,6 +275,14 @@ test('tabs apply distinct themes and mobile haptics', async ({ page }) => {
   await nav(page, 'Timetable');
   await expect(layout).toHaveAttribute('data-section', 'timetable');
   await expect(layout).toHaveAttribute('data-motion-direction', 'forward');
+  await expect(page.locator('.calendar-toolbar h2')).toHaveCSS(
+    'color',
+    'rgb(33, 29, 24)',
+  );
+  await expect(page.locator('.calendar-weekdays')).toHaveCSS(
+    'color',
+    'rgb(93, 85, 75)',
+  );
   await nav(page, 'Attendance');
   await expect(layout).toHaveAttribute('data-section', 'attendance');
   await nav(page, 'Calendar');

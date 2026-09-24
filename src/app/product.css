@@ -12,6 +12,9 @@ input[type='checkbox'] {
   overflow-x: clip;
 }
 .app-layout[data-section='timetable'] {
+  --foreground: #211d18;
+  --text: #211d18;
+  --muted: #5d554b;
   --section-accent: var(--violet);
   --section-soft: var(--violet-soft);
   --section-ambient: color-mix(in srgb, var(--violet) 11%, var(--background));
