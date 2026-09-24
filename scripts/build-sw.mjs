@@ -20,7 +20,7 @@ await writeFile(
   'public/sw.js',
   `/* Generated from the production build. No private API responses are cached. */
 const CACHE = ${JSON.stringify('shabooya-shell-' + build)};
-const ASSETS = ${JSON.stringify(['/', '/offline.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', ...assets])};
+const ASSETS = ${JSON.stringify(['/', '/offline.html', '/manifest.webmanifest', '/favicon.ico', '/icons/favicon-32.png', '/icons/brand-mark-64.png', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png', '/icons/apple-touch-icon.png', '/backgrounds/home.webp', '/backgrounds/timetable.webp', '/backgrounds/attendance.webp', '/backgrounds/calendar.webp', '/backgrounds/profile.webp', ...assets])};
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))));
 self.addEventListener('message', event => { if(event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => (k.startsWith('shabooya-shell-') || k.startsWith('rollcall-shell-')) && k !== CACHE).map(k => caches.delete(k)))).then(()=>self.clients.claim())));

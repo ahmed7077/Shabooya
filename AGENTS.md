@@ -17,3 +17,15 @@ This repository contains a production application intended to hold real user dat
 - Deliver database changes through safe, additive, versioned Supabase migrations. Do not edit an already-applied migration.
 - Develop features on branches and verify them with CI and a Vercel Preview before merging to `main` for production.
 - Treat production rollback of application code separately from database recovery. Do not blindly reverse a migration when data could be lost.
+
+## Feature delivery workflow
+
+For every new feature or user-facing change:
+
+- Run the relevant formatter, lint, typecheck, unit tests, browser/E2E tests, and production build before delivery.
+- Fix regressions introduced by the change before committing.
+- Commit the verified change to Git with a clear, scoped message.
+- Push the commit to the configured GitHub repository.
+- Use a Vercel Preview for verification before a production deployment.
+- Deploy to production only when the user explicitly requests it.
+- Report the commit, pushed branch, deployment URL, and validation results without exposing secrets.

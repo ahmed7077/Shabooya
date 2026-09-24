@@ -16,6 +16,7 @@ import { generateSessions } from '@/lib/timetable/generator';
 import { browserExtractor, compressImage } from '@/lib/timetable/extraction';
 import { db } from '@/lib/supabase/client';
 import { rpc } from '@/lib/supabase/repository';
+import { haptic } from '@/lib/haptics';
 export const DAYS = [
   'Sunday',
   'Monday',
@@ -93,6 +94,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
   const savedEntries = useRef(
     new Map(draft.entries.map((e) => [e.id, { ...e }])),
   );
+  const reviewRef = useRef<HTMLInputElement>(null);
   const orderedEntries = [...draft.entries].sort(
     (a, b) => ((entryDay(a) + 6) % 7) - ((entryDay(b) + 6) % 7),
   );
@@ -273,6 +275,18 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
     }
   }
   async function confirm() {
+    if (validation) {
+      setError(validation);
+      document
+        .querySelector('.confirm-area')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!reviewed) {
+      setError('Review your timetable, then tick the confirmation checkbox.');
+      reviewRef.current?.focus();
+      return;
+    }
     if (pending) {
       setError('Sync pending attendance before replacing your timetable.');
       return;
@@ -281,6 +295,7 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
     setError('');
     try {
       await rpc('activate_timetable', { draft });
+      haptic('success');
       sessionStorage.removeItem(`rollcall-draft:${user!.id}`);
       await refresh();
       notify('Timetable saved. Your schedule is ready.');
@@ -864,21 +879,28 @@ export function TimetableEditor({ onClose }: { onClose: () => void }) {
                 cancellations afterwards. Saved holidays are retained.
               </p>
             )}
-            <p>
+            <p
+              className={`confirm-status ${validation ? 'blocked' : 'ready'}`}
+              role="status"
+            >
               {validation || `${count} dated sessions in your academic period.`}
             </p>
             <label className="check-label">
               <input
+                ref={reviewRef}
                 type="checkbox"
                 checked={reviewed}
-                onChange={(e) => setReviewed(e.target.checked)}
+                onChange={(e) => {
+                  setReviewed(e.target.checked);
+                  setError('');
+                }}
               />
               I reviewed all dates, times, subjects and groups.
             </label>
             <ErrorText message={error} />
             <button
               className="button primary wide"
-              disabled={busy || !online || !reviewed || !!validation}
+              disabled={busy || !online}
               onClick={() => void confirm()}
             >
               <Check size={18} />

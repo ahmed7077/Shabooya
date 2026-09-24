@@ -21,13 +21,40 @@ import { Calendar } from '@/features/calendar';
 import { SettingsScreen } from '@/features/settings';
 import { PwaControls } from './pwa';
 import { tabFromLocation, tabPath } from '@/lib/routes';
-const NAV = [
-  { name: 'Home', icon: House },
-  { name: 'Timetable', icon: CalendarDays },
-  { name: 'Attendance', icon: ChartNoAxesCombined },
-  { name: 'Calendar', icon: CalendarRange },
-  { name: 'Profile', icon: UserRound },
-];
+import { haptic } from '@/lib/haptics';
+import {
+  navigationDirection,
+  PRIMARY_TABS,
+  type MotionDirection,
+} from '@/lib/navigation-motion';
+import { useDeviceTilt } from '@/hooks/use-device-tilt';
+
+const ICONS = {
+  Home: House,
+  Timetable: CalendarDays,
+  Attendance: ChartNoAxesCombined,
+  Calendar: CalendarRange,
+  Profile: UserRound,
+};
+const NAV = PRIMARY_TABS.map((name) => ({ name, icon: ICONS[name] }));
+const BACKGROUNDS = [
+  'home',
+  'timetable',
+  'attendance',
+  'calendar',
+  'profile',
+] as const;
+type BackgroundName = (typeof BACKGROUNDS)[number];
+
+function backgroundFor(tab: string, editor = false): BackgroundName {
+  if (editor) return 'timetable';
+  if (tab.startsWith('Subject:') || tab === 'Pending') return 'attendance';
+  const name = tab.toLowerCase();
+  return BACKGROUNDS.includes(name as BackgroundName)
+    ? (name as BackgroundName)
+    : 'home';
+}
+
 function Content() {
   const {
     user,
@@ -47,8 +74,14 @@ function Content() {
     [editor, setEditor] = useState(false),
     [install, setInstall] = useState(false),
     [showInstall, setShowInstall] = useState(false),
+    [leavingSection, setLeavingSection] = useState<BackgroundName | null>(null),
+    [motionDirection, setMotionDirection] =
+      useState<MotionDirection>('forward'),
     [, tick] = useState(0);
   const activeTabRef = useRef(tab);
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backgroundsRef = useRef<HTMLDivElement>(null);
+  useDeviceTilt(backgroundsRef, Boolean(data?.profile));
   useEffect(() => {
     activeTabRef.current = tab;
   }, [tab]);
@@ -59,12 +92,29 @@ function Content() {
   }, [user?.id]);
   useEffect(() => {
     const back = () => {
-      setTab(tabFromLocation());
-      setEditor(location.pathname === '/timetable-editor');
+      const nextTab = tabFromLocation();
+      const nextEditor = location.pathname === '/timetable-editor';
+      const from = activeTabRef.current;
+      setMotionDirection(navigationDirection(from, nextTab));
+      setLeavingSection(backgroundFor(from));
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = setTimeout(
+        () => setLeavingSection(null),
+        760,
+      );
+      activeTabRef.current = nextTab;
+      setTab(nextTab);
+      setEditor(nextEditor);
     };
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
+  useEffect(
+    () => () => {
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    },
+    [],
+  );
   useEffect(() => {
     if (loading) return;
     let path = location.pathname;
@@ -102,6 +152,12 @@ function Content() {
     return () => clearInterval(timer);
   }, []);
   function navigate(value: string) {
+    if (activeTabRef.current === value && !editor) return;
+    haptic('selection');
+    setMotionDirection(navigationDirection(activeTabRef.current, value));
+    setLeavingSection(backgroundFor(activeTabRef.current, editor));
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => setLeavingSection(null), 760);
     activeTabRef.current = value;
     window.history.pushState(null, '', tabPath(value));
     setTab(value);
@@ -109,6 +165,11 @@ function Content() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
   function editTimetable() {
+    haptic('selection');
+    setMotionDirection(navigationDirection(activeTabRef.current, 'Timetable'));
+    setLeavingSection(backgroundFor(activeTabRef.current));
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => setLeavingSection(null), 760);
     window.history.pushState(null, '', '/timetable-editor');
     setEditor(true);
     window.scrollTo(0, 0);
@@ -161,8 +222,13 @@ function Content() {
   if (!data.profile) return <Onboarding />;
   const active =
     tab.startsWith('Subject:') || tab === 'Pending' ? 'Attendance' : tab;
+  const section = backgroundFor(active, editor);
   return (
-    <div className="app-layout">
+    <div
+      className="app-layout"
+      data-section={section}
+      data-motion-direction={motionDirection}
+    >
       <a href="#main" className="skip-link">
         Skip to content
       </a>
@@ -177,9 +243,11 @@ function Content() {
               onClick={() => navigate(name)}
               aria-current={active === name && !editor ? 'page' : undefined}
             >
-              <Icon size={21} />
+              <span className="nav-icon">
+                <Icon size={20} />
+              </span>
               <span>{name}</span>
-              {name === 'Home' && <span className="nav-dot" />}
+              <span className="nav-dot" aria-hidden="true" />
             </button>
           ))}
         </nav>
@@ -212,6 +280,18 @@ function Content() {
         </div>
       </aside>
       <div className="main-area">
+        <div
+          ref={backgroundsRef}
+          className="tab-backgrounds"
+          aria-hidden="true"
+        >
+          {BACKGROUNDS.map((name) => (
+            <span
+              key={name}
+              className={`tab-backdrop tab-backdrop-${name}${section === name ? ' active entering' : ''}${leavingSection === name && section !== name ? ' leaving' : ''}`}
+            />
+          ))}
+        </div>
         {notice && (
           <div className="toast" role="status">
             {notice}
@@ -289,27 +369,29 @@ function Content() {
               </div>
             </div>
           ))}
-          {editor ? (
-            <TimetableEditor onClose={closeEditor} />
-          ) : tab === 'Home' ? (
-            <Dashboard navigate={navigate} editTimetable={editTimetable} />
-          ) : tab === 'Timetable' ? (
-            <Calendar key="week" week editTimetable={editTimetable} />
-          ) : tab === 'Calendar' ? (
-            <Calendar key="month" editTimetable={editTimetable} />
-          ) : tab === 'Profile' ? (
-            <SettingsScreen
-              editTimetable={editTimetable}
-              install={() => setInstall(true)}
-            />
-          ) : (
-            <Attendance
-              key={tab}
-              subject={tab.startsWith('Subject:') ? tab.slice(8) : undefined}
-              pendingOnly={tab === 'Pending'}
-              navigate={navigate}
-            />
-          )}
+          <div key={editor ? 'editor' : tab} className="screen-frame">
+            {editor ? (
+              <TimetableEditor onClose={closeEditor} />
+            ) : tab === 'Home' ? (
+              <Dashboard navigate={navigate} editTimetable={editTimetable} />
+            ) : tab === 'Timetable' ? (
+              <Calendar key="week" week editTimetable={editTimetable} />
+            ) : tab === 'Calendar' ? (
+              <Calendar key="month" editTimetable={editTimetable} />
+            ) : tab === 'Profile' ? (
+              <SettingsScreen
+                editTimetable={editTimetable}
+                install={() => setInstall(true)}
+              />
+            ) : (
+              <Attendance
+                key={tab}
+                subject={tab.startsWith('Subject:') ? tab.slice(8) : undefined}
+                pendingOnly={tab === 'Pending'}
+                navigate={navigate}
+              />
+            )}
+          </div>
           <footer className="page-footer">
             <span>A little consistency goes a long way.</span>
             <span>Made for your everyday.</span>
@@ -323,7 +405,9 @@ function Content() {
             aria-current={active === name && !editor ? 'page' : undefined}
             onClick={() => navigate(name)}
           >
-            <Icon size={21} />
+            <span className="nav-icon">
+              <Icon size={20} />
+            </span>
             <span>{name}</span>
           </button>
         ))}

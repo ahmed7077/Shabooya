@@ -1,5 +1,9 @@
 'use client';
-import { useState } from 'react';
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
   addDays,
@@ -16,6 +20,18 @@ import { hasOccurred } from '@/lib/attendance/calculator';
 import { SessionCard } from './session-card';
 import { Empty, ErrorText, Field, Modal } from '@/components/ui';
 import { rpc } from '@/lib/supabase/repository';
+import {
+  daySwipeDelta,
+  swipeIntent,
+  type SwipeIntent,
+} from '@/lib/navigation-motion';
+
+type DayGesture = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  intent: SwipeIntent;
+};
 export function Calendar({
   week = false,
   editTimetable,
@@ -31,6 +47,7 @@ export function Calendar({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [view, setView] = useState<'day' | 'week'>('week');
+  const dayGesture = useRef<DayGesture | null>(null);
   if (!data) return null;
   const daySessions = data.sessions.filter((s) => s.session_date === selected);
   const first = week
@@ -39,6 +56,58 @@ export function Calendar({
   const days = Array.from({ length: week ? 7 : 42 }, (_, i) =>
     addDays(first, i),
   );
+  function resetDayGesture(node: HTMLElement) {
+    dayGesture.current = null;
+    node.classList.remove('is-day-dragging');
+    node.style.removeProperty('--day-drag');
+  }
+  function onDayPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (
+      (week && view !== 'day') ||
+      !matchMedia('(max-width: 850px) and (pointer: coarse)').matches ||
+      (event.target as Element).closest('.session-card, button, a, input')
+    )
+      return;
+    dayGesture.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      intent: 'pending',
+    };
+  }
+  function onDayPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const state = dayGesture.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+    if (state.intent === 'pending') state.intent = swipeIntent(dx, dy);
+    if (state.intent === 'vertical') {
+      resetDayGesture(event.currentTarget);
+      return;
+    }
+    if (state.intent !== 'horizontal') return;
+    event.preventDefault();
+    if (!event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add('is-day-dragging');
+    event.currentTarget.style.setProperty(
+      '--day-drag',
+      `${Math.max(-72, Math.min(72, dx * 0.48))}px`,
+    );
+  }
+  function finishDayGesture(event: ReactPointerEvent<HTMLDivElement>) {
+    const state = dayGesture.current;
+    if (!state || state.pointerId !== event.pointerId) return;
+    const delta =
+      state.intent === 'horizontal'
+        ? daySwipeDelta(event.clientX - state.startX)
+        : 0;
+    resetDayGesture(event.currentTarget);
+    if (!delta) return;
+    const next = addDays(new Date(`${selected}T12:00:00`), delta);
+    setSelected(format(next, 'yyyy-MM-dd'));
+    setCursor(next);
+  }
   return (
     <>
       <header className="page-heading">
@@ -162,66 +231,74 @@ export function Calendar({
           ))}
         </div>
       </section>
-      <div className="section-heading">
-        <h2>
-          {week && view === 'week'
-            ? 'This week'
-            : format(new Date(`${selected}T12:00:00`), 'EEEE, d MMMM')}
-        </h2>
-        <div className="button-row">
-          {week && (
-            <div className="segmented">
-              <button
-                aria-pressed={view === 'day'}
-                onClick={() => setView('day')}
-              >
-                Day
-              </button>
-              <button
-                aria-pressed={view === 'week'}
-                onClick={() => setView('week')}
-              >
-                Week
-              </button>
-            </div>
-          )}
-          <button className="text-button" onClick={() => setHoliday(true)}>
-            Add holiday
-          </button>
+      <div
+        className="day-swipe-zone"
+        onPointerDown={onDayPointerDown}
+        onPointerMove={onDayPointerMove}
+        onPointerUp={finishDayGesture}
+        onPointerCancel={(event) => resetDayGesture(event.currentTarget)}
+      >
+        <div className="section-heading">
+          <h2>
+            {week && view === 'week'
+              ? 'This week'
+              : format(new Date(`${selected}T12:00:00`), 'EEEE, d MMMM')}
+          </h2>
+          <div className="button-row">
+            {week && (
+              <div className="segmented">
+                <button
+                  aria-pressed={view === 'day'}
+                  onClick={() => setView('day')}
+                >
+                  Day
+                </button>
+                <button
+                  aria-pressed={view === 'week'}
+                  onClick={() => setView('week')}
+                >
+                  Week
+                </button>
+              </div>
+            )}
+            <button className="text-button" onClick={() => setHoliday(true)}>
+              Add holiday
+            </button>
+          </div>
         </div>
+        {week && view === 'week' ? (
+          days.map((day) => {
+            const key = format(day, 'yyyy-MM-dd'),
+              sessions = data.sessions.filter((s) => s.session_date === key);
+            return (
+              <section className="week-day" key={key}>
+                <h3>
+                  {format(day, 'EEEE, d MMM')}{' '}
+                  {key === today && <span className="count-pill">Today</span>}
+                </h3>
+                {sessions.length ? (
+                  sessions.map((s) => <SessionCard session={s} key={s.id} />)
+                ) : (
+                  <p className="muted">
+                    No classes. A little space in your week.
+                  </p>
+                )}
+              </section>
+            );
+          })
+        ) : daySessions.length ? (
+          <div className="session-list">
+            {daySessions.map((s) => (
+              <SessionCard key={s.id} session={s} />
+            ))}
+          </div>
+        ) : (
+          <Empty
+            title="Nothing on the timetable."
+            description="No classes scheduled for this day."
+          />
+        )}
       </div>
-      {week && view === 'week' ? (
-        days.map((day) => {
-          const key = format(day, 'yyyy-MM-dd'),
-            sessions = data.sessions.filter((s) => s.session_date === key);
-          return (
-            <section className="week-day" key={key}>
-              <h3>
-                {format(day, 'EEEE, d MMM')}{' '}
-                {key === today && <span className="count-pill">Today</span>}
-              </h3>
-              {sessions.length ? (
-                sessions.map((s) => <SessionCard session={s} key={s.id} />)
-              ) : (
-                <p className="muted">
-                  No classes. A little space in your week.
-                </p>
-              )}
-            </section>
-          );
-        })
-      ) : daySessions.length ? (
-        <div className="session-list">
-          {daySessions.map((s) => (
-            <SessionCard key={s.id} session={s} />
-          ))}
-        </div>
-      ) : (
-        <Empty
-          title="Nothing on the timetable."
-          description="No classes scheduled for this day."
-        />
-      )}
       {holiday && (
         <Modal title="Add a holiday" onClose={() => setHoliday(false)}>
           <p>

@@ -5,6 +5,213 @@ input::placeholder {
 input[type='checkbox'] {
   accent-color: var(--info);
 }
+.app-layout {
+  --section-accent: var(--info);
+  --section-soft: var(--info-soft);
+  --section-ambient: color-mix(in srgb, var(--info) 10%, var(--background));
+  overflow-x: clip;
+}
+.app-layout[data-section='timetable'] {
+  --section-accent: var(--violet);
+  --section-soft: var(--violet-soft);
+  --section-ambient: color-mix(in srgb, var(--violet) 11%, var(--background));
+}
+.app-layout[data-section='timetable'] .page-heading h1,
+.app-layout[data-section='timetable'] .page-heading p,
+.app-layout[data-section='timetable'] .section-heading h2,
+.app-layout[data-section='timetable'] .section-heading > span,
+.app-layout[data-section='timetable'] .week-day > h3,
+.app-layout[data-section='timetable'] .page-footer,
+.app-layout[data-section='timetable'] .breadcrumb,
+.app-layout[data-section='timetable'] .connection,
+.app-layout[data-section='timetable'] .mobile-brand .brand,
+.app-layout[data-section='timetable'] .mobile-brand .brand-subtitle {
+  color: #211d18;
+}
+.app-layout[data-section='timetable'] .page-heading .eyebrow,
+.app-layout[data-section='timetable'] .section-heading .text-button,
+.app-layout[data-section='timetable'] .editor > .text-button {
+  color: #563a79;
+}
+.app-layout[data-section='timetable'] .sidebar,
+.app-layout[data-section='timetable'] .sidebar > .brand,
+.app-layout[data-section='timetable'] .sidebar .brand-subtitle,
+.app-layout[data-section='timetable'] .sidebar .workspace-label,
+.app-layout[data-section='timetable'] .sidebar-profile small,
+.app-layout[data-section='timetable'] .sidebar nav button,
+.app-layout[data-section='timetable'] .bottom-nav,
+.app-layout[data-section='timetable'] .bottom-nav button {
+  color: #211d18;
+}
+.app-layout[data-section='timetable'] .sidebar {
+  background: #fffaf02e;
+  border-right-color: #352b201f;
+}
+.app-layout[data-section='timetable'] .topbar,
+.app-layout[data-section='timetable'] .bottom-nav {
+  background: #fffaf033;
+  border-color: #352b2024;
+}
+.app-layout[data-section='timetable'] .sidebar nav button.active {
+  color: #211d18;
+  background: #684b8d24;
+}
+.app-layout[data-section='attendance'] {
+  --section-accent: var(--success);
+  --section-soft: var(--success-soft);
+  --section-ambient: color-mix(in srgb, var(--success) 10%, var(--background));
+}
+.app-layout[data-section='calendar'] {
+  --section-accent: var(--amber);
+  --section-soft: var(--amber-soft);
+  --section-ambient: color-mix(in srgb, var(--amber) 11%, var(--background));
+}
+.app-layout[data-section='profile'] {
+  --section-accent: var(--warning);
+  --section-soft: var(--warning-soft);
+  --section-ambient: color-mix(in srgb, var(--warning) 10%, var(--background));
+}
+.main-area {
+  background: transparent;
+  min-height: 100dvh;
+  isolation: isolate;
+}
+.tab-backgrounds {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  width: 100vw;
+  max-width: 100vw;
+  contain: strict;
+  background: var(--background);
+}
+.tab-backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-position: calc(50% + var(--tilt-x, 0px))
+    calc(50% + var(--tilt-y, 0px));
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: saturate(0.94) contrast(1.02);
+  transform: translate3d(0, 100%, 0);
+  transition: none;
+  will-change: opacity, transform;
+}
+.tab-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #ffffff 20%, transparent);
+}
+:root[data-theme='dark'] .tab-backdrop::after {
+  background: #11151b33;
+}
+.tab-backdrop.active {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  z-index: 2;
+}
+.tab-backdrop.entering {
+  animation: backdrop-enter-forward 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tab-backdrop.leaving {
+  opacity: 1;
+  z-index: 1;
+  animation: backdrop-leave-forward 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.app-layout[data-motion-direction='backward'] .tab-backdrop.entering {
+  animation-name: backdrop-enter-backward;
+}
+.app-layout[data-motion-direction='backward'] .tab-backdrop.leaving {
+  animation-name: backdrop-leave-backward;
+}
+@keyframes backdrop-enter-forward {
+  from {
+    opacity: 0.82;
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes backdrop-leave-forward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.7;
+    transform: translate3d(0, -100%, 0);
+  }
+}
+@keyframes backdrop-enter-backward {
+  from {
+    opacity: 0.82;
+    transform: translate3d(0, -100%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes backdrop-leave-backward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.7;
+    transform: translate3d(0, 100%, 0);
+  }
+}
+.tab-backdrop-home {
+  background-image: url('/backgrounds/home.webp');
+}
+.tab-backdrop-timetable {
+  background-image: url('/backgrounds/timetable.webp');
+}
+.tab-backdrop-attendance {
+  background-image: url('/backgrounds/attendance.webp');
+}
+.tab-backdrop-calendar {
+  background-image: url('/backgrounds/calendar.webp');
+}
+.tab-backdrop-profile {
+  background-image: url('/backgrounds/profile.webp');
+}
+.main-area > :not(.tab-backgrounds) {
+  position: relative;
+  z-index: 1;
+}
+.screen-frame {
+  animation: screen-in-forward 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app-layout[data-motion-direction='backward'] .screen-frame {
+  animation-name: screen-in-backward;
+}
+@keyframes screen-in-forward {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes screen-in-backward {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .calendar-grid > button.outside {
   opacity: 1;
   color: var(--muted);
@@ -25,9 +232,18 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
+  background:
+    radial-gradient(
+      circle at 82% 8%,
+      color-mix(in srgb, var(--info) 7%, transparent),
+      transparent 30rem
+    ),
+    var(--bg);
 }
 .brand {
   letter-spacing: -1px;
+}
+.brand-name {
   font-size: 25px;
 }
 .brand-icon {
@@ -66,11 +282,53 @@ summary:focus-visible {
 .session-card,
 .attendance-hero {
   border-radius: 18px;
+  box-shadow:
+    0 1px 2px #0000000a,
+    0 14px 38px #11182708;
+}
+.panel,
+.session-card,
+.subject-detail-card,
+.attendance-hero,
+.day-summary {
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 .button {
   border-radius: 11px;
   font-size: 13px;
   min-height: 46px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.button > svg,
+.text-button > svg,
+.hero-link > svg,
+.attention-link > svg {
+  transition: transform 180ms ease;
+}
+.button.primary {
+  box-shadow: 0 8px 22px
+    color-mix(in srgb, var(--section-accent) 22%, transparent);
+}
+.button.secondary {
+  border-color: var(--border);
+}
+.button.secondary:hover {
+  border-color: color-mix(in srgb, var(--section-accent) 42%, var(--border));
+  background: var(--section-soft);
+}
+.button.dashed:hover {
+  border-color: var(--section-accent);
+  background: var(--section-soft);
 }
 .page-heading .button,
 .section-heading .text-button {
@@ -91,16 +349,33 @@ summary:focus-visible {
   max-width: 1250px;
   padding-top: 38px;
 }
+.page-heading h1 {
+  text-wrap: balance;
+}
+.page-heading .eyebrow,
+.section-heading .eyebrow {
+  color: var(--section-accent);
+}
 .sidebar {
-  background: var(--nav-background);
+  background: color-mix(in srgb, var(--nav-background) 24%, transparent);
   color: var(--nav-text);
   width: 236px;
   padding: 32px 18px;
   border: 0;
+  border-right: 1px solid #ffffff14;
+  backdrop-filter: blur(22px) saturate(1.24);
+  -webkit-backdrop-filter: blur(22px) saturate(1.24);
+  box-shadow: 12px 0 40px #0000001f;
 }
 .sidebar > .brand {
   color: #f4f7fc;
   margin-left: 8px;
+}
+.sidebar .brand-subtitle {
+  color: var(--nav-text);
+}
+.sidebar .brand-subtitle:hover {
+  color: #d6e5ff;
 }
 .sidebar .brand-icon {
   background: #467de0;
@@ -117,15 +392,37 @@ summary:focus-visible {
   min-height: 50px;
 }
 .sidebar nav button.active {
-  background: var(--nav-selected);
-  color: #d6e5ff;
+  background: color-mix(in srgb, var(--section-accent) 22%, transparent);
+  color: #f4f7fc;
+  box-shadow: inset 3px 0 0 var(--section-accent);
+}
+.nav-icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: inherit;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+.sidebar nav button.active .nav-icon {
+  background: color-mix(in srgb, var(--section-accent) 28%, transparent);
 }
 .nav-dot {
-  background: currentColor;
+  width: 6px;
+  height: 6px;
+  background: var(--section-accent);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--section-accent) 16%, transparent);
 }
 .sidebar .install-card {
-  background: var(--nav-selected);
-  border: 0;
+  background: color-mix(in srgb, var(--nav-selected) 28%, transparent);
+  backdrop-filter: blur(18px);
+  border: 1px solid #ffffff12;
   color: #edf3ff;
   border-radius: 14px;
 }
@@ -140,8 +437,12 @@ summary:focus-visible {
   margin-left: 236px;
 }
 .topbar {
-  background: var(--surface-glass);
-  backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--surface-elevated) 20%, transparent);
+  backdrop-filter: blur(22px) saturate(1.24);
+  -webkit-backdrop-filter: blur(22px) saturate(1.24);
+  transition:
+    background 480ms ease,
+    border-color 480ms ease;
 }
 .connection {
   font-size: 11px;
@@ -155,7 +456,11 @@ summary:focus-visible {
   color: var(--info);
 }
 .attendance-hero {
-  background: var(--surface);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--info-soft) 52%, var(--surface)),
+    var(--surface) 58%
+  );
   border-color: var(--border);
   padding: 30px 30px 62px;
   min-height: 258px;
@@ -215,6 +520,14 @@ summary:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.dashboard-grid > .day-summary {
+  background: color-mix(in srgb, var(--surface) 30%, transparent);
+  border-color: color-mix(in srgb, var(--cyan) 25%, var(--border));
+}
+.icon-tile {
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 .day-summary .eyebrow {
   font-size: 10px;
@@ -279,9 +592,65 @@ progress::-moz-progress-bar {
 .reminder-count {
   flex-shrink: 0;
 }
+.panel > h2:first-child,
+.editor .section-heading h2 {
+  color: var(--info);
+}
+.panel > h2:first-child span,
+.editor .section-heading h2 span {
+  color: var(--text);
+}
 .session-card {
   border-left: 3px solid var(--info);
   padding: 22px;
+  touch-action: pan-y;
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+  will-change: transform;
+  overflow: hidden;
+}
+.session-card > :not(.swipe-cue) {
+  position: relative;
+  z-index: 1;
+}
+.swipe-cue {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  opacity: var(--swipe-progress, 0);
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--success) 48%, transparent),
+    transparent 47%,
+    transparent 53%,
+    color-mix(in srgb, var(--warning) 48%, transparent)
+  );
+}
+.swipe-cue > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.swipe-cue-present {
+  color: var(--success);
+}
+.swipe-cue-absent {
+  color: var(--warning);
+}
+.session-card.is-gesturing {
+  transform: translate3d(var(--swipe-x, 0), 0, 0) scale(0.985)
+    rotate(var(--touch-tilt-x, 0));
+  transition: none;
 }
 .session-card.cancelled {
   border-left-color: var(--muted);
@@ -345,6 +714,21 @@ progress::-moz-progress-bar {
   height: 34px;
   font-size: 10px;
   border-radius: 10px;
+}
+.subjects-grid > :nth-child(4n + 2) .subject-icon,
+.subject-list > :nth-child(4n + 2) .subject-icon {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+.subjects-grid > :nth-child(4n + 3) .subject-icon,
+.subject-list > :nth-child(4n + 3) .subject-icon {
+  background: var(--cyan-soft);
+  color: var(--cyan);
+}
+.subjects-grid > :nth-child(4n + 4) .subject-icon,
+.subject-list > :nth-child(4n + 4) .subject-icon {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 .subject-row small,
 .subject-detail-card > small {
@@ -571,6 +955,10 @@ progress::-moz-progress-bar {
   color: var(--info);
   border-color: var(--info);
 }
+.calendar-grid > button:not(.outside):hover {
+  border-color: color-mix(in srgb, var(--info) 45%, var(--border));
+  background: color-mix(in srgb, var(--info-soft) 45%, var(--surface));
+}
 .calendar-grid > button.today > span:first-child {
   border-color: var(--info);
 }
@@ -588,6 +976,18 @@ progress::-moz-progress-bar {
 .week-day {
   border-left: 2px solid var(--border);
   padding-left: 20px;
+}
+.day-swipe-zone {
+  touch-action: pan-y;
+  transform: translate3d(var(--day-drag, 0), 0, 0);
+  transition:
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease;
+  will-change: transform;
+}
+.day-swipe-zone.is-day-dragging {
+  transition: none;
+  opacity: 0.94;
 }
 .week-day > h3 {
   color: var(--muted);
@@ -706,6 +1106,122 @@ progress::-moz-progress-bar {
 .entry-editor[data-review='true'] {
   border-color: var(--warning);
 }
+.confirm-area {
+  background: color-mix(in srgb, var(--surface-alt) 64%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+}
+.confirm-status {
+  display: flex;
+  align-items: flex-start;
+  padding: 11px 13px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+.confirm-status.ready {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.confirm-status.blocked {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.confirm-area .primary {
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+/* Let each tab's artwork remain the dominant surface. */
+.panel,
+.session-card,
+.subject-detail-card,
+.attendance-hero,
+.day-summary,
+.empty,
+.calendar-panel,
+.update-banner,
+.confirm-area,
+.segmented,
+.bulk-actions,
+.projected-result,
+.main-stat {
+  background: color-mix(in srgb, var(--surface) 30%, transparent);
+  border-color: color-mix(in srgb, var(--border) 62%, transparent);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  box-shadow:
+    inset 0 1px 0 #ffffff10,
+    0 16px 42px #00000018;
+}
+.attendance-ring > div,
+.distribution-ring > div,
+.hero-link,
+.mark,
+.calendar-grid > button:hover,
+.calendar-grid > button.selected,
+.segmented button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.reminder,
+.attention-strip,
+.notice {
+  background: color-mix(in srgb, var(--warning-soft) 42%, transparent);
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+:root[data-theme='dark'] .panel,
+:root[data-theme='dark'] .session-card,
+:root[data-theme='dark'] .subject-detail-card,
+:root[data-theme='dark'] .attendance-hero,
+:root[data-theme='dark'] .day-summary,
+:root[data-theme='dark'] .empty,
+:root[data-theme='dark'] .calendar-panel,
+:root[data-theme='dark'] .update-banner,
+:root[data-theme='dark'] .confirm-area,
+:root[data-theme='dark'] .segmented,
+:root[data-theme='dark'] .bulk-actions,
+:root[data-theme='dark'] .projected-result,
+:root[data-theme='dark'] .main-stat {
+  background: #11182166;
+  border-color: #ffffff1c;
+}
+.secondary {
+  box-shadow: 0 1px 2px #0000000a;
+}
+.topbar {
+  border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+}
+.sidebar nav button {
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+@media (hover: hover) {
+  .button:hover:not(:disabled) > svg,
+  .text-button:hover > svg,
+  .hero-link:hover > svg,
+  .attention-link:hover > svg {
+    transform: translateX(3px);
+  }
+  .button.primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 11px 28px
+      color-mix(in srgb, var(--section-accent) 28%, transparent);
+  }
+  .session-card:hover,
+  .subject-detail-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 42px #11182712;
+  }
+  .sidebar nav button:not(.active):hover {
+    background: #ffffff0a;
+    color: #edf3ff;
+    transform: translateX(2px);
+  }
+}
 .skeleton {
   border-radius: 16px;
   background: var(--surface-alt);
@@ -773,26 +1289,143 @@ progress::-moz-progress-bar {
   }
 }
 @media (max-width: 850px) {
+  .tab-backdrop.entering {
+    animation-name: backdrop-enter-mobile-forward;
+  }
+  .tab-backdrop.leaving {
+    animation-name: backdrop-leave-mobile-forward;
+  }
+  .app-layout[data-motion-direction='backward'] .tab-backdrop.entering {
+    animation-name: backdrop-enter-mobile-backward;
+  }
+  .app-layout[data-motion-direction='backward'] .tab-backdrop.leaving {
+    animation-name: backdrop-leave-mobile-backward;
+  }
+  .screen-frame {
+    animation-name: screen-in-mobile-forward;
+  }
+  .app-layout[data-motion-direction='backward'] .screen-frame {
+    animation-name: screen-in-mobile-backward;
+  }
   .main-area {
     margin-left: 0;
   }
   .bottom-nav {
-    background: var(--surface-glass);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 -4px 24px #17233c08;
+    background: color-mix(in srgb, var(--surface-elevated) 20%, transparent);
+    backdrop-filter: blur(22px) saturate(1.24);
+    -webkit-backdrop-filter: blur(22px) saturate(1.24);
+    border-top-color: color-mix(in srgb, var(--border) 58%, transparent);
+    box-shadow: 0 -10px 32px #00000014;
   }
   .bottom-nav button[aria-current='page'] {
-    background: var(--info-soft);
-    color: var(--info);
+    background: color-mix(in srgb, var(--section-accent) 20%, transparent);
+    color: var(--section-accent);
+  }
+  .bottom-nav button[aria-current='page'] .nav-icon {
+    background: color-mix(in srgb, var(--section-accent) 14%, transparent);
+    transform: translateY(-2px);
   }
   .bottom-nav button {
     font-size: 10px;
+  }
+  .reminder:active,
+  .attention-strip:active,
+  .subject-detail-card:active,
+  .install-card:active,
+  .sidebar-profile:active {
+    transform: scale(0.985);
+    transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .topbar {
     height: calc(72px + env(safe-area-inset-top));
   }
   .toast {
     bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes backdrop-enter-mobile-forward {
+  from {
+    opacity: 0.82;
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes backdrop-leave-mobile-forward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.7;
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+@keyframes backdrop-enter-mobile-backward {
+  from {
+    opacity: 0.82;
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes backdrop-leave-mobile-backward {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.7;
+    transform: translate3d(100%, 0, 0);
+  }
+}
+@keyframes screen-in-mobile-forward {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes screen-in-mobile-backward {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-backdrop.entering,
+  .tab-backdrop.leaving {
+    animation-name: reduced-fade;
+    animation-duration: 120ms;
+  }
+  .screen-frame {
+    animation-name: reduced-fade;
+    animation-duration: 120ms;
+  }
+  .tab-backgrounds {
+    --tilt-x: 0px !important;
+    --tilt-y: 0px !important;
+  }
+}
+@keyframes reduced-fade {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
   }
 }
 @media (max-width: 620px) {

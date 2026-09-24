@@ -18,6 +18,12 @@
   --warning-soft: #faeee9;
   --info: #2860c5;
   --info-soft: #eaf0fc;
+  --violet: #6c5bb8;
+  --violet-soft: #f0edfa;
+  --cyan: #24768a;
+  --cyan-soft: #e8f4f6;
+  --amber: #9a681f;
+  --amber-soft: #fbf2df;
   --surface-alt: #edf0f4;
   --nav-background: #202630;
   --nav-text: #c2cbd8;
@@ -52,6 +58,12 @@
   --warning-soft: #44302b;
   --info: #a3c1ff;
   --info-soft: #273955;
+  --violet: #c4b5fd;
+  --violet-soft: #362f51;
+  --cyan: #84d3df;
+  --cyan-soft: #203b41;
+  --amber: #edc276;
+  --amber-soft: #443923;
   --surface-alt: #292f39;
   --nav-background: #191d24;
   --nav-text: #b7c2d2;
@@ -192,9 +204,6 @@ summary {
 .brand {
   display: inline-flex;
   align-items: center;
-  font-size: 27px;
-  font-weight: 750;
-  letter-spacing: -1.1px;
   white-space: nowrap;
 }
 .brand-icon {
@@ -207,6 +216,38 @@ summary {
   height: 35px;
   border-radius: 10px;
   margin-right: 9px;
+  overflow: hidden;
+}
+.brand-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.brand-name {
+  font-size: 27px;
+  font-weight: 750;
+  letter-spacing: -1.1px;
+}
+.brand-subtitle {
+  min-height: 18px;
+  padding: 3px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.brand-subtitle:hover {
+  color: var(--text);
 }
 .brand-dot {
   color: var(--green);
@@ -306,6 +347,47 @@ summary {
   font-weight: 400;
   color: var(--muted);
   line-height: 1.55;
+}
+.password-input {
+  position: relative;
+}
+.password-input input {
+  padding-right: 50px;
+}
+.password-toggle {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+.password-toggle:hover {
+  color: var(--text);
+  background: var(--surface-alt);
+}
+.password-requirements {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.password-requirements > span:first-child {
+  font-weight: 650;
+}
+.password-requirements > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.password-requirements .met {
+  color: var(--green);
 }
 .form-grid {
   display: grid;
@@ -447,6 +529,14 @@ summary {
 .modal > p {
   font-size: 13px;
   margin-bottom: 20px;
+}
+.compact-modal {
+  width: min(360px, calc(100vw - 32px));
+}
+.compact-modal > p + p {
+  margin-top: 6px;
+  color: var(--text);
+  font-weight: 600;
 }
 .loading-screen {
   min-height: 100dvh;
@@ -2031,6 +2121,13 @@ summary {
   }
   .mobile-brand .brand-icon svg {
     width: 22px;
+  }
+  .mobile-brand .brand-name {
+    font-size: 22px;
+  }
+  .mobile-brand .brand-subtitle {
+    font-size: 7px;
+    letter-spacing: 1.6px;
   }
   .topbar-right {
     gap: 8px;

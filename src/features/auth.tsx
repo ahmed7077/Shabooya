@@ -7,7 +7,7 @@ import {
   ChartNoAxesCombined,
 } from 'lucide-react';
 import { db, configured } from '@/lib/supabase/client';
-import { Brand, Field, ErrorText } from '@/components/ui';
+import { Brand, Field, ErrorText, PasswordField } from '@/components/ui';
 import { useApp } from '@/components/app-provider';
 import { profileSchema } from '@/lib/validation';
 export function AuthScreen() {
@@ -168,23 +168,14 @@ export function AuthScreen() {
               />
             </Field>
             {mode !== 'forgot' && (
-              <Field
+              <PasswordField
                 label="Password"
-                hint={
-                  mode === 'signup' ? 'Use at least 10 characters.' : undefined
+                autoComplete={
+                  mode === 'signup' ? 'new-password' : 'current-password'
                 }
-              >
-                <input
-                  name="password"
-                  type="password"
-                  autoComplete={
-                    mode === 'signup' ? 'new-password' : 'current-password'
-                  }
-                  minLength={mode === 'signup' ? 10 : 1}
-                  required
-                  placeholder="Your password"
-                />
-              </Field>
+                showRequirements={mode === 'signup'}
+                placeholder="Your password"
+              />
             )}
             <ErrorText message={error || sessionError} />
             {notice && (
@@ -424,15 +415,11 @@ export function ResetPassword() {
             }
           }}
         >
-          <Field label="New password">
-            <input
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={10}
-            />
-          </Field>
+          <PasswordField
+            label="New password"
+            autoComplete="new-password"
+            showRequirements
+          />
           <ErrorText message={message} />
           <button disabled={busy} className="button primary">
             {busy ? 'Saving…' : 'Save new password'}

@@ -248,6 +248,107 @@ test('responsive first-use layout and password reset request', async ({
   await expect(page.getByRole('status')).toContainText('If an account exists');
 });
 
+test('timetable confirmation explains incomplete setup', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('button', { name: 'Create manually' }).click();
+  await page.getByRole('button', { name: 'Confirm timetable' }).click();
+  await expect(page.locator('.confirm-area').getByRole('alert')).toContainText(
+    'Add valid academic dates and at least one complete class',
+  );
+});
+
+test('tabs apply distinct themes and mobile haptics', async ({ page }) => {
+  await page.addInitScript(() => {
+    const vibrations: unknown[] = [];
+    Object.defineProperty(window, '__vibrations', { value: vibrations });
+    Object.defineProperty(navigator, 'vibrate', {
+      configurable: true,
+      value: (pattern: unknown) => {
+        vibrations.push(pattern);
+        return true;
+      },
+    });
+  });
+  await onboard(page);
+  const layout = page.locator('.app-layout');
+  await expect(layout).toHaveAttribute('data-section', 'home');
+  await nav(page, 'Timetable');
+  await expect(layout).toHaveAttribute('data-section', 'timetable');
+  await expect(layout).toHaveAttribute('data-motion-direction', 'forward');
+  await nav(page, 'Attendance');
+  await expect(layout).toHaveAttribute('data-section', 'attendance');
+  await nav(page, 'Calendar');
+  await expect(layout).toHaveAttribute('data-section', 'calendar');
+  await nav(page, 'Profile');
+  await expect(layout).toHaveAttribute('data-section', 'profile');
+  await expect(layout).toHaveAttribute('data-motion-direction', 'forward');
+  await expect(page.locator('.tab-backdrop.active')).toHaveClass(/profile/);
+  await nav(page, 'Home');
+  await expect(layout).toHaveAttribute('data-motion-direction', 'backward');
+  await expect(page.locator('.tab-backdrop.active')).toHaveClass(/home/);
+  await nav(page, 'Calendar');
+  await nav(page, 'Attendance');
+  await expect(layout).toHaveAttribute('data-motion-direction', 'backward');
+  await page.goBack();
+  await expect(layout).toHaveAttribute('data-section', 'calendar');
+  await expect(layout).toHaveAttribute('data-motion-direction', 'forward');
+  for (const background of [
+    'home',
+    'timetable',
+    'attendance',
+    'calendar',
+    'profile',
+  ]) {
+    const response = await page.request.get(`/backgrounds/${background}.webp`);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toContain('image/webp');
+  }
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __vibrations: unknown[];
+            }
+          ).__vibrations.length,
+      ),
+    ).toBeGreaterThanOrEqual(4);
+  }
+});
+
+test('brand detail and password controls are accessible', async ({ page }) => {
+  await page.goto('/signup');
+  const rollCall = page.locator('.brand-subtitle:visible').first();
+  await expect(rollCall).toHaveText('Roll call');
+  await rollCall.click();
+  const dialog = page.getByRole('dialog', { name: 'Why Shabooya?' });
+  await expect(dialog).toContainText('A little nod to “Shabooya Roll Call.”');
+  await expect(dialog).toContainText('Roll call, but smarter.');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(rollCall).toBeFocused();
+
+  const password = page.getByLabel('Password', { exact: true });
+  await expect(password).toHaveAttribute('type', 'password');
+  await expect(password).toHaveAttribute('autocomplete', 'new-password');
+  await expect(page.getByText('At least 10 characters')).not.toHaveClass(/met/);
+  await password.fill('long-password');
+  await expect(page.getByText('At least 10 characters')).toHaveClass(/met/);
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await expect(password).toHaveValue('long-password');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  await expect(page).toHaveURL(/\/signup$/);
+
+  await page.goto('/login');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute(
+    'autocomplete',
+    'current-password',
+  );
+});
+
 test('protected URLs, browser history, saved session and accessible analytics', async ({
   page,
 }) => {
@@ -308,7 +409,47 @@ test('invalid recovery links and Shabooya install metadata', async ({
     name: 'Shabooya',
     short_name: 'Shabooya',
     display: 'standalone',
+    icons: expect.arrayContaining([
+      expect.objectContaining({
+        src: '/icons/icon-192.png',
+        sizes: '192x192',
+      }),
+      expect.objectContaining({
+        src: '/icons/icon-512.png',
+        sizes: '512x512',
+        purpose: 'any',
+      }),
+      expect.objectContaining({
+        src: '/icons/maskable-512.png',
+        purpose: 'maskable',
+      }),
+    ]),
   });
+  for (const icon of [
+    '/favicon.ico',
+    '/icons/favicon-32.png',
+    '/icons/brand-mark-64.png',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png',
+    '/icons/maskable-512.png',
+    '/icons/apple-touch-icon.png',
+  ]) {
+    const response = await request.get(icon);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toMatch(
+      icon.endsWith('.ico')
+        ? /image\/(x-icon|vnd\.microsoft\.icon)/
+        : /image\/png/,
+    );
+  }
+  await expect(
+    page.locator('link[rel="icon"][href="/favicon.ico"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(
+      'link[rel="apple-touch-icon"][href="/icons/apple-touch-icon.png"]',
+    ),
+  ).toHaveCount(1);
   await expect(page).toHaveTitle(/Shabooya/);
 });
 
@@ -465,12 +606,22 @@ test('all primary screens fit small phones through desktop', async ({
       'Profile',
     ]) {
       await nav(page, name);
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        `${name} at ${width}px`,
-      ).toBe(true);
+      const fit = await page.evaluate(() => ({
+        fits: document.documentElement.scrollWidth <= innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        viewport: innerWidth,
+        overflow: [...document.querySelectorAll<HTMLElement>('body *')]
+          .map((node) => ({
+            node: `${node.tagName.toLowerCase()}.${node.className}`,
+            left: Math.round(node.getBoundingClientRect().left),
+            right: Math.round(node.getBoundingClientRect().right),
+          }))
+          .filter(({ left, right }) => left < -1 || right > innerWidth + 1)
+          .slice(0, 8),
+      }));
+      expect(fit.fits, `${name} at ${width}px: ${JSON.stringify(fit)}`).toBe(
+        true,
+      );
     }
   }
 });

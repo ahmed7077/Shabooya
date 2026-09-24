@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-ocr-assets.mjs",
+    "predev": "node scripts/icons.mjs && node scripts/copy-ocr-assets.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-ocr-assets.mjs",
+    "prebuild": "node scripts/icons.mjs && node scripts/copy-ocr-assets.mjs",
     "build": "next build --webpack && node scripts/build-sw.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
